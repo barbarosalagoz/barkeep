@@ -29,6 +29,7 @@ import {
 } from "./errors";
 
 import PaymentTracker from "./components/PaymentTracker";
+import TryRamp from "./components/TryRamp";
 
 import "./App.css";
 
@@ -1043,6 +1044,14 @@ function App() {
             walletAddress
           }
           xlmBalance={xlmBalance}
+        />
+      )}
+
+      {walletAddress && isTestnet && (
+        <TryRamp
+          walletAddress={
+            walletAddress
+          }
         />
       )}
 

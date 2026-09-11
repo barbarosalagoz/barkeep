@@ -8,7 +8,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run --exclude \"**/*.live.test.ts\"",
+    "demo:sep": "tsx scripts/sep-demo.ts"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.6.0",
@@ -27,8 +31,10 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.67.0",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
   }
 }

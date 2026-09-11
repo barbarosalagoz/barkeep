@@ -18,6 +18,8 @@ export type AppErrorKind =
   | "WRONG_NETWORK"
   /** No wallet connected when one was required. */
   | "NOT_CONNECTED"
+  /** The TRY on/off-ramp anchor rejected or could not complete a request. */
+  | "ANCHOR"
   /** Anything else. */
   | "UNKNOWN";
 

@@ -1405,3 +1405,172 @@ footer {
 
   text-decoration: none;
 }
+
+/* ------------------------------------------------------------------ */
+/* TRY on/off-ramp (SEP-6) panel                                       */
+/* ------------------------------------------------------------------ */
+
+.ramp-discovered {
+  color: #6ee7b7;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ramp-discovering {
+  color: #858b99;
+
+  font-size: 11px;
+}
+
+.ramp-balance {
+  margin-bottom: 4px;
+}
+
+.ramp-balance-actions {
+  margin-top: 10px;
+
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+
+  gap: 8px;
+}
+
+.ramp-balance-actions .balance-refresh {
+  margin-top: 0;
+}
+
+.ramp-quote,
+.ramp-instructions {
+  padding: 14px 16px;
+
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 12px;
+
+  background: rgba(139, 92, 246, 0.06);
+
+  text-align: left;
+}
+
+.ramp-instructions {
+  margin-top: 18px;
+}
+
+.ramp-quote-expired {
+  border-color: rgba(248, 113, 113, 0.4);
+
+  background: rgba(248, 113, 113, 0.06);
+}
+
+.ramp-quote dl,
+.ramp-instructions dl {
+  margin: 10px 0 0;
+
+  display: grid;
+  grid-template-columns: 1fr;
+
+  gap: 6px;
+}
+
+.ramp-quote dl > div,
+.ramp-instructions dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+
+  gap: 12px;
+}
+
+.ramp-quote dt,
+.ramp-instructions dt {
+  color: #858b99;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ramp-quote dd,
+.ramp-instructions dd {
+  margin: 0;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.ramp-instructions dd code {
+  color: #c4b5fd;
+
+  font-size: 12px;
+}
+
+.ramp-quote-id {
+  margin-top: 10px;
+
+  display: block;
+
+  color: #6b7280;
+
+  font-size: 10px;
+}
+
+.ramp-note {
+  margin: 12px 0 0;
+
+  color: #858b99;
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ramp-instructions .tracker-action {
+  margin-top: 12px;
+}
+
+.ramp-reset {
+  align-self: flex-start;
+}
+
+.ramp-timeline {
+  margin-top: 14px;
+  padding: 14px;
+
+  border: 1px solid #242836;
+  border-radius: 14px;
+
+  background: rgba(255, 255, 255, 0.02);
+
+  text-align: left;
+}
+
+.ramp-links {
+  margin-top: 10px;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+
+  gap: 12px;
+}
+
+.ramp-links a {
+  color: #a78bfa;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+.ramp-links a:hover {
+  color: #c4b5fd;
+}
+
+.ramp-links code {
+  color: #9ca3af;
+}

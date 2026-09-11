@@ -7,17 +7,25 @@
  * UI shows distinct messages for wallet-not-found, user-rejected, etc.
  */
 
-import { Networks } from "@stellar/stellar-sdk";
-
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit/sdk";
 import { Networks as KitNetworks } from "@creit.tech/stellar-wallets-kit/types";
 import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
 import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
 import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
 
+import {
+  NETWORK_LABEL,
+  NETWORK_PASSPHRASE,
+  STELLAR_NETWORK,
+} from "../config/stellar";
 import { AppError, classifyError, walletNotFound } from "../errors";
 
-const TESTNET_PASSPHRASE: string = Networks.TESTNET;
+/*
+ * The network PromptRail runs on comes from src/config/stellar.ts, so the
+ * wallet gate follows the same VITE_STELLAR_NETWORK switch as the anchor.
+ */
+const REQUIRED_PASSPHRASE: string = NETWORK_PASSPHRASE;
+const REQUIRED_NETWORK_NAME = STELLAR_NETWORK === "public" ? "Mainnet" : "Testnet";
 
 let initialized = false;
 
@@ -43,7 +51,9 @@ function initializeWalletKit(): void {
     modules: [new FreighterModule(), new AlbedoModule(), new xBullModule()],
   });
 
-  StellarWalletsKit.setNetwork(KitNetworks.TESTNET);
+  StellarWalletsKit.setNetwork(
+    STELLAR_NETWORK === "public" ? KitNetworks.PUBLIC : KitNetworks.TESTNET
+  );
 
   initialized = true;
 }
@@ -70,7 +80,7 @@ export async function getWalletOptions(): Promise<WalletOption[]> {
  *
  * Rejects with a typed AppError: WALLET_NOT_FOUND when the chosen wallet is
  * not installed, USER_REJECTED when the user declines, WRONG_NETWORK when the
- * wallet is not on Testnet.
+ * wallet is not on the configured network.
  */
 export async function connectWallet(): Promise<ConnectedWallet> {
   initializeWalletKit();
@@ -87,22 +97,22 @@ export async function connectWallet(): Promise<ConnectedWallet> {
 
     const { network, networkPassphrase } = await StellarWalletsKit.getNetwork();
 
-    if (networkPassphrase && networkPassphrase !== TESTNET_PASSPHRASE) {
+    if (networkPassphrase && networkPassphrase !== REQUIRED_PASSPHRASE) {
       await safeDisconnect();
 
       throw new AppError(
         "WRONG_NETWORK",
-        `PromptRail requires Stellar Testnet, but the wallet is on ${
+        `PromptRail requires ${NETWORK_LABEL}, but the wallet is on ${
           network || "another network"
         }.`,
-        "Switch the wallet to Testnet and connect again."
+        `Switch the wallet to ${REQUIRED_NETWORK_NAME} and connect again.`
       );
     }
 
     return {
       address,
-      network: network || "TESTNET",
-      networkPassphrase: networkPassphrase || TESTNET_PASSPHRASE,
+      network: network || REQUIRED_NETWORK_NAME.toUpperCase(),
+      networkPassphrase: networkPassphrase || REQUIRED_PASSPHRASE,
     };
   } catch (error) {
     throw withWalletContext(error);
@@ -125,7 +135,7 @@ export async function getWalletNetwork(): Promise<{
 
 /**
  * Sign a base64 transaction envelope with the connected wallet.
- * Refuses to sign anything outside Testnet.
+ * Refuses to sign anything outside the configured network.
  */
 export async function signWithWallet(
   transactionXdr: string,
@@ -136,11 +146,11 @@ export async function signWithWallet(
   try {
     const { networkPassphrase } = await StellarWalletsKit.getNetwork();
 
-    if (networkPassphrase && networkPassphrase !== TESTNET_PASSPHRASE) {
+    if (networkPassphrase && networkPassphrase !== REQUIRED_PASSPHRASE) {
       throw new AppError(
         "WRONG_NETWORK",
-        "Refusing to sign outside Stellar Testnet.",
-        "Switch the wallet to Testnet and try again."
+        `Refusing to sign outside ${NETWORK_LABEL}.`,
+        `Switch the wallet to ${REQUIRED_NETWORK_NAME} and try again.`
       );
     }
 
@@ -148,7 +158,7 @@ export async function signWithWallet(
       transactionXdr,
       {
         address,
-        networkPassphrase: TESTNET_PASSPHRASE,
+        networkPassphrase: REQUIRED_PASSPHRASE,
       }
     );
 
