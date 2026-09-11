@@ -1,7 +1,7 @@
 /*
  * Multi-wallet service built on StellarWalletsKit.
  *
- * The kit presents a wallet-selection modal (Freighter, Albedo, xBull) and
+ * The kit presents a wallet-selection modal (Freighter, Albedo) and
  * gives the rest of the app one uniform surface: connect, read the address,
  * sign, disconnect. Every failure is normalized through src/errors.ts so the
  * UI shows distinct messages for wallet-not-found, user-rejected, etc.
@@ -11,7 +11,6 @@ import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit/sdk";
 import { Networks as KitNetworks } from "@creit.tech/stellar-wallets-kit/types";
 import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
 import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
-import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
 
 import {
   NETWORK_LABEL,
@@ -47,8 +46,14 @@ function initializeWalletKit(): void {
     return;
   }
 
+  /*
+   * xBull is deliberately not offered: the kit's xBull module bundles
+   * @creit.tech/xbull-wallet-connect, which ships without a license and
+   * whose upstream repository is AGPL-3.0. Only import kit modules whose
+   * whole dependency chain is permissively licensed.
+   */
   StellarWalletsKit.init({
-    modules: [new FreighterModule(), new AlbedoModule(), new xBullModule()],
+    modules: [new FreighterModule(), new AlbedoModule()],
   });
 
   StellarWalletsKit.setNetwork(

@@ -221,8 +221,8 @@ async function invoke<T>(
   }
 
   /*
-   * Sign with whichever wallet the kit has connected (Freighter, Albedo,
-   * xBull). A decline surfaces as a typed USER_REJECTED error.
+   * Sign with whichever wallet the kit has connected (Freighter or
+   * Albedo). A decline surfaces as a typed USER_REJECTED error.
    */
   onStatus?.({ phase: "signing" });
 

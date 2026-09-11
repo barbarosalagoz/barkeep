@@ -38,7 +38,6 @@ export class AppError extends Error {
 
 export const WALLET_INSTALL_URLS: Record<string, string> = {
   freighter: "https://www.freighter.app/",
-  xbull: "https://xbull.app/",
   albedo: "https://albedo.link/",
 };
 

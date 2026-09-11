@@ -206,8 +206,8 @@ function App() {
   };
 
   /*
-   * Connect through the kit's wallet-selection modal (Freighter, Albedo,
-   * xBull). The service enforces Testnet and raises typed AppErrors, so
+   * Connect through the kit's wallet-selection modal (Freighter,
+   * Albedo). The service enforces Testnet and raises typed AppErrors, so
    * wallet-not-found and user-rejected surface as distinct messages.
    */
   const connectWallet = async () => {
@@ -497,7 +497,7 @@ function App() {
 
       /*
        * 8. Ask the connected wallet to sign (any kit wallet: Freighter,
-       * Albedo, xBull). A decline raises a typed USER_REJECTED error.
+       * Albedo). A decline raises a typed USER_REJECTED error.
        */
       const signedXdr =
         await signWithWallet(
@@ -941,9 +941,9 @@ function App() {
 
             <p>
               Pick a Stellar wallet
-              — Freighter, Albedo,
-              or xBull — to access
-              your Testnet account.
+              — Freighter or Albedo
+              — to access your
+              Testnet account.
             </p>
 
             <button

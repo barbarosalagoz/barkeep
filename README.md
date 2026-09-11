@@ -17,7 +17,7 @@ while a payment is in flight and tracks its status across many recipients.
 The off-chain half is a **multi-wallet dApp** built on
 [StellarWalletsKit](https://stellarwalletskit.dev/):
 
-* Connecting any supported Stellar wallet — **Freighter, Albedo, or xBull** —
+* Connecting any supported Stellar wallet — **Freighter or Albedo** —
   through a wallet-selection modal
 * Live payment status and a contract event feed that update in near-real-time
 * Distinctly surfaced error handling (wallet not found, request rejected,
@@ -45,7 +45,7 @@ PromptRail is deployed publicly on Vercel and has been tested end-to-end on Stel
 
 Verified production flow:
 
-- ✅ Multi-wallet connection (Freighter / Albedo / xBull)
+- ✅ Multi-wallet connection (Freighter / Albedo)
 - ✅ Stellar Testnet detection
 - ✅ XLM balance retrieval
 - ✅ XLM transaction creation
@@ -424,9 +424,17 @@ wallet in a selection modal instead of being locked to one extension:
 | --- | --- |
 | Freighter | Browser extension |
 | Albedo | Web-based signer |
-| xBull | Browser extension / web |
+
+xBull was removed on 2026-09-11: the kit's xBull module bundles
+`@creit.tech/xbull-wallet-connect`, which ships without a license and whose
+upstream repository is AGPL-3.0. The connector is no longer in the web bundle,
+but `npm ci` still installs it, because StellarWalletsKit 2.6.0 pins it
+exactly. See [License](#license).
 
 ![Wallet selection modal with multiple wallets](docs/screenshots/wallet-options.png)
+
+The screenshot predates the xBull removal; the modal now lists Freighter and
+Albedo.
 
 The connect card also lists each wallet with a live **detected** badge or an
 **install** link before any connection attempt. All signing — White Belt XLM
@@ -609,7 +617,7 @@ Transaction Hash + Updated Balance
 
 ### Multi-Wallet Integration (StellarWalletsKit)
 
-PromptRail opens a wallet-selection modal (Freighter, Albedo, xBull), shows which wallets are detected in the browser, and requests access to the user's Stellar public address.
+PromptRail opens a wallet-selection modal (Freighter, Albedo), shows which wallets are detected in the browser, and requests access to the user's Stellar public address.
 
 Private keys are never exposed to PromptRail.
 
@@ -699,7 +707,7 @@ Examples include:
 ### Stellar
 
 * Stellar JavaScript SDK
-* StellarWalletsKit (Freighter, Albedo, xBull)
+* StellarWalletsKit (Freighter, Albedo)
 * Stellar Horizon
 * Soroban RPC
 * Stellar Testnet
@@ -722,8 +730,8 @@ Make sure the following are installed:
 * Node.js 20+
 * npm
 * Git
-* A supported Stellar wallet: the **Freighter** or **xBull** browser
-  extension, or **Albedo** (web-based, nothing to install)
+* A supported Stellar wallet: the **Freighter** browser extension, or
+  **Albedo** (web-based, nothing to install)
 
 The wallet must be configured for **Stellar Testnet**.
 
@@ -791,7 +799,7 @@ Click:
 Connect Wallet
 ```
 
-Pick a wallet in the selection modal (Freighter, Albedo, or xBull) and approve the connection request.
+Pick a wallet in the selection modal (Freighter or Albedo) and approve the connection request.
 
 ---
 

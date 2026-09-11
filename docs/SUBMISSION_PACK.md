@@ -3,6 +3,12 @@
 Working notes and paste-ready text for the Stellar **Journey to Mastery** monthly
 challenge submissions (Rise In). One section per belt.
 
+> **Update 2026-09-11:** xBull was removed from the shipped wallet set for
+> licensing reasons (its connector ships without a license; upstream is
+> AGPL-3.0). The app now offers Freighter and Albedo, and the paste-ready
+> submission text below says so. The dated verification records below still
+> describe the app as it was verified on 2026-09-01.
+
 ---
 
 ## Yellow Belt
@@ -41,7 +47,7 @@ four explicit points from the previous rejection.
 | 1 | Soroban smart contract (escrowed Payment Tracker) | `contracts/payment-tracker/src/lib.rs` — `initialize` L145, `create_payment` L165, `create_batch` L188, `complete_payment` L217, `cancel_payment` L222, reads L231–L257; `require_auth` L171/L193/L343 | Deployed contract `CDWVMXTDTU6DJUG3BDUKI6SK72VIAVTJ44VWCL2VZ7OX5TCRRVD7HH6X` on Testnet; [stellar.expert contract page](https://stellar.expert/explorer/testnet/contract/CDWVMXTDTU6DJUG3BDUKI6SK72VIAVTJ44VWCL2VZ7OX5TCRRVD7HH6X) |
 | 2 | Contract deployed to Stellar Testnet + invoked on-chain | README "Verified on-chain activity" table | 9 confirmed txs, e.g. deploy [`9a75966a…`](https://stellar.expert/explorer/testnet/tx/9a75966a7c395228434f6774f0e831013cefaff474c2192dbd944660c2e143eb), `create_payment` [`d13babf0…`](https://stellar.expert/explorer/testnet/tx/d13babf0aefbad0edd6f2057a6b85f58b4d38dee3d26f3226091bfe833081c0d) — all re-checked `successful: true` on Horizon 2026-09-01 |
 | 3 | Contract unit tests | `contracts/payment-tracker/src/test.rs` — 13 `#[test]` functions (L58–L308) | CI job `contract` runs `cargo test --workspace` on every push |
-| 4 | Multi-wallet via StellarWalletsKit (rejection point) | `src/services/wallet.ts` — kit init with Freighter/Albedo/xBull modules L42–L46, `authModal` L79, `signTransaction` L147 | Live modal on https://promptrail-ten.vercel.app/ (verified 2026-09-01); screenshot `docs/screenshots/wallet-options.png` |
+| 4 | Multi-wallet via StellarWalletsKit (rejection point) | `src/services/wallet.ts` — kit init with Freighter/Albedo modules L56, `authModal` L94, `signTransaction` L162 | Live modal on https://promptrail-ten.vercel.app/ (verified 2026-09-01); screenshot `docs/screenshots/wallet-options.png` |
 | 5 | Transaction handling (build → sign in wallet → submit → confirm, hash + explorer link) | `src/App.tsx` payment flow L499–L550; `src/contract/paymentTracker.ts` typed client (prepare/sign/submit/poll) | Screenshots `payment-success.png`, `payment-error.png`, `balance-testnet.png`; on-chain txs in the README table |
 | 6 | Real-time event synchronization (rejection point) | `src/contract/paymentTracker.ts` `fetchContractEvents` L464 (Soroban RPC `getEvents`); `src/components/PaymentTracker.tsx` 8s status polling L42/L180, event feed L118; typed `#[contractevent]`s in `lib.rs` L99–L127 | Feed visible in app after a fresh payment |
 | 7 | Distinct error handling (wallet not found / rejected / insufficient balance) | `src/errors.ts` taxonomy L12–L68; banners in `PaymentTracker.tsx` L81–L83 and `App.tsx` L47–L51 | `payment-error.png`; Freighter "install ↗" badge on live page doubles as wallet-not-found detection |
@@ -65,7 +71,7 @@ four explicit points from the previous rejection.
 > Tracker) deployed on Testnet holds XLM in flight and tracks Pending →
 > Completed/Cancelled across single and multi-recipient batches, emitting a
 > typed event on every state change. A React dApp drives it end-to-end through
-> StellarWalletsKit (Freighter, Albedo, xBull): connect, balance, XLM payments,
+> StellarWalletsKit (Freighter, Albedo): connect, balance, XLM payments,
 > contract calls, live status polling, and a real-time contract event feed —
 > no backend. Contract: `CDWVMXTDTU6DJUG3BDUKI6SK72VIAVTJ44VWCL2VZ7OX5TCRRVD7HH6X`.
 
@@ -76,7 +82,7 @@ four explicit points from the previous rejection.
 >   confirmed transactions documented with hashes in the README, verifiable on
 >   stellar.expert and Horizon.
 > - **Multi-wallet via StellarWalletsKit** — wallet-selection modal with
->   Freighter, Albedo, and xBull; all signing (XLM payments and contract calls)
+>   Freighter and Albedo; all signing (XLM payments and contract calls)
 >   goes through the kit. Implementation: `src/services/wallet.ts`.
 > - **Real-time events** — the contract emits typed `#[contractevent]`s; the
 >   frontend consumes them via Soroban RPC `getEvents` plus 8-second live
@@ -92,8 +98,8 @@ four explicit points from the previous rejection.
 
 **How to test (3 steps)**
 
-> 1. Open https://promptrail-ten.vercel.app/ with a Testnet wallet (Freighter,
->    Albedo, or xBull; fund via Friendbot) and connect through the wallet modal.
+> 1. Open https://promptrail-ten.vercel.app/ with a Testnet wallet (Freighter
+>    or Albedo; fund via Friendbot) and connect through the wallet modal.
 > 2. In **Payment Tracker**, create an escrowed payment (or a multi-recipient
 >    batch), sign in your wallet, and watch it appear as *Pending* with a
 >    linked tx hash; then **Complete** or **Cancel** it and watch the status
