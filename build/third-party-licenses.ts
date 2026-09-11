@@ -69,11 +69,21 @@ const RULE = "-".repeat(80);
 /** How much of each bundled source file to scan for copyright headers. */
 const HEADER_BYTES = 4096;
 
+interface VendoredText {
+  /** License text file, relative to build/license-overrides/. */
+  file: string;
+  source: string;
+  gitBlob: string;
+  reason: string;
+}
+
 interface LicenseOverride {
   /** Vendored upstream license text, relative to build/license-overrides/. */
   file?: string;
   /** A bundled package whose license text covers this sub-package manifest. */
   coveredBy?: string;
+  /** Licenses of third-party code vendored inside this package. */
+  extraTexts?: VendoredText[];
   source?: string;
   gitBlob?: string;
   reason: string;
@@ -90,6 +100,8 @@ export interface NoticeEntry {
   role?: string;
   /** Copyright headers found in this package's bundled source files. */
   sourceNotices?: string[];
+  /** Licenses of third-party code vendored inside this package. */
+  vendoredTexts?: Array<{ text: string; source: string; reason: string }>;
 }
 
 const byCodePoint = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -151,7 +163,17 @@ export function copyrightLines(...texts: Array<string | null>): string[] {
         /^Copyright\b/.test(line) &&
         !/^Copyright\s+(?:notice|notices|owner|owners|holder|holders|law|laws|statement|and)\b/i.test(line);
       const shouting = /^COPYRIGHT\b/.test(line) && /\b(?:19|20)\d{2}\b/.test(line);
-      const mark = /^(?:\(c\)|©)\s*\S/i.test(line) && !/^\(c\)\s+You\b/.test(line);
+      /*
+       * A bare "(c)" or "©" only counts with a year or an organisation word.
+       * Source files are scanned too, where "(c) => c.type === ..." is an
+       * arrow function and Apache-2.0 section 4's "(c) You must retain" is
+       * list prose, not a notice.
+       */
+      const mark =
+        /^(?:\(c\)|©)\s*\S/i.test(line) &&
+        !/^\(c\)\s*(?:=>|[=,;:)\]}])/.test(line) &&
+        (/\b(?:19|20)\d{2}\b/.test(line) ||
+          /\b(?:Inc|LLC|Ltd|GmbH|Foundation|Team|Authors|Contributors|Corporation|Company|Project|University)\b/i.test(line));
       const inline = /\bCopyright\s*(?:\(c\)|©)\s*\S/.test(line);
 
       if (leadingWord || shouting || mark || inline) {
@@ -366,6 +388,16 @@ function renderSection(entry: NoticeEntry): string {
     parts.push("", "NOTICE:", "", entry.noticeText);
   }
 
+  for (const vendored of entry.vendoredTexts ?? []) {
+    parts.push(
+      "",
+      `License of third-party code vendored into this package (${vendored.source}):`,
+      `  ${vendored.reason}`,
+      "",
+      vendored.text
+    );
+  }
+
   return parts.join("\n");
 }
 
@@ -441,6 +473,11 @@ export function renderNotices(
       textSource,
       author: personText(dependency.author),
       sourceNotices: sourceNotices.get(id),
+      vendoredTexts: (override?.extraTexts ?? []).map((vendored) => ({
+        text: normalizeText(readFileSync(join(root, OVERRIDES_DIR, vendored.file), "utf8")) ?? "",
+        source: `${vendored.source} (git blob ${vendored.gitBlob})`,
+        reason: vendored.reason,
+      })),
     };
   });
 
@@ -482,6 +519,12 @@ export interface ThirdPartyLicensesOptions {
 export function thirdPartyLicenses(options: ThirdPartyLicensesOptions = {}): Plugin[] {
   const root = options.root ?? PROJECT_ROOT;
   let collected: Dependency[] | null = null;
+  /*
+   * Modules that contribute bytes to a chunk. A module whose export the
+   * bundler inlines (a constant, say) renders nothing and ships nothing, so
+   * it must not appear in the notices or trip the completeness check.
+   */
+  const renderedIds = new Set<string>();
 
   const collector = license({
     cwd: root,
@@ -517,9 +560,15 @@ export function thirdPartyLicenses(options: ThirdPartyLicensesOptions = {}): Plu
        * build-tool section instead.
        */
       renderChunk(code: string, chunk: { modules?: Record<string, unknown> }, ...rest: unknown[]) {
-        const modules = Object.fromEntries(
-          Object.entries(chunk.modules ?? {}).filter(([id]) => isAbsolute(id.replace(/^\0/, "")))
-        );
+        const entries = Object.entries(chunk.modules ?? {});
+
+        for (const [id, module] of entries) {
+          if (((module as { renderedLength?: number } | null)?.renderedLength ?? 0) > 0) {
+            renderedIds.add(id);
+          }
+        }
+
+        const modules = Object.fromEntries(entries.filter(([id]) => isAbsolute(id.replace(/^\0/, ""))));
 
         return collectorRenderChunk.call(this, code, { ...chunk, modules }, ...rest);
       },
@@ -532,11 +581,15 @@ export function thirdPartyLicenses(options: ThirdPartyLicensesOptions = {}): Plu
           this.error("rollup-plugin-license produced no third-party report");
         }
 
-        const moduleIds = [...this.getModuleIds()];
+        const moduleIds = [...renderedIds];
         const sourceNotices = sourceNoticesByPackage(moduleIds);
         const notices = renderNotices(collected, root, buildToolEntries(), sourceNotices);
 
-        // Fail closed: every bundled node_modules package must be in the report.
+        /*
+         * Fail closed: every node_modules package that contributes bytes to a
+         * chunk must be in the report. (JS modules only: CSS does not reach
+         * renderChunk.)
+         */
         const reported = new Set([...notices.matchAll(/^ {2}(\S+@\S+) \(/gm)].map((match) => match[1]));
         const missing = [
           ...new Set(

@@ -3,7 +3,15 @@
     "file": "creit.tech__stellar-wallets-kit@2.6.0.LICENSE",
     "source": "https://github.com/Creit-Tech/Stellar-Wallets-Kit/blob/v2.6.0/LICENSE",
     "gitBlob": "288fb66c9aa82d11e1247f7632a2e52afa6b56cb",
-    "reason": "The npm tarball ships no license file; this is the repository LICENSE at the v2.6.0 release tag."
+    "reason": "The npm tarball ships no license file; this is the repository LICENSE at the v2.6.0 release tag.",
+    "extraTexts": [
+      {
+        "file": "denoland__std.LICENSE",
+        "source": "https://github.com/denoland/std/blob/main/LICENSE",
+        "gitBlob": "4f55c62d5005262e9b762b6da591d6223ea13b48",
+        "reason": "The kit vendors JSR @std/encoding 1.0.11 under esm/deps/jsr.io/@std/encoding/1.0.11/; parts of it are in the bundle."
+      }
+    ]
   },
   "@stellar/freighter-api@6.0.0": {
     "file": "stellar__freighter-api@6.0.0.LICENSE",

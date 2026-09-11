@@ -76,6 +76,18 @@ describe("copyrightLines", () => {
     expect(copyrightLines(mit)).toEqual(["Copyright (c) Meta Platforms, Inc. and affiliates."]);
   });
 
+  it("ignores code that merely starts with (c)", () => {
+    expect(
+      copyrightLines(
+        [
+          '(c) => c.type === "ledgerEntryCreated" && c.value.data.type === "account"',
+          "(c) You must retain, in the Source form of any Derivative Works",
+          "(c, d) => c + d",
+        ].join("\n")
+      )
+    ).toEqual([]);
+  });
+
   it("recognises notice formats without a year or at a comment prefix", () => {
     expect(
       copyrightLines(
@@ -190,6 +202,18 @@ describe("renderNotices", () => {
 
     expect(text).toContain("Copyright notices in this package's bundled source files:");
     expect(text).toContain("Copyright 2009 The Go Authors. All rights reserved.");
+  });
+
+  it("ships the license of third-party code vendored inside a package", () => {
+    const text = renderNotices(
+      [dependency({ name: "@creit.tech/stellar-wallets-kit", version: "2.6.0", licenseText: null })],
+      ROOT,
+      []
+    );
+
+    expect(text).toContain("License of third-party code vendored into this package");
+    expect(text).toContain("@std/encoding");
+    expect(text).toContain("Copyright 2018-2022 the Deno authors.");
   });
 
   it("credits the build tools' runtime helpers", () => {

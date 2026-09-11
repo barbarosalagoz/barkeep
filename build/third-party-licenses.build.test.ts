@@ -112,6 +112,24 @@ describe("thirdPartyLicenses() in a real build", () => {
     expect(text).toMatch(/^ {2}rolldown@\S+ \(MIT\)$/m);
   });
 
+  it("ignores a package whose code the bundler inlines away", async () => {
+    const root = fixture(
+      {
+        "const-pkg": {
+          json: { name: "const-pkg", version: "1.0.0", type: "module", main: "index.js", license: "MIT" },
+          files: { "index.js": "export const VALUE = 42;\n", LICENSE: mitText("Const Author") },
+        },
+      },
+      'import { VALUE } from "const-pkg";\nconsole.log(VALUE);\n'
+    );
+
+    const output = await buildFixture(root);
+    const text = String(output.find((item) => item.fileName === THIRD_PARTY_LICENSES_FILE)?.source);
+
+    expect(text).toContain("Bundled packages: 0");
+    expect(text).not.toContain("const-pkg");
+  });
+
   it("fails on an AGPL package", async () => {
     const root = fixture(
       { "agpl-pkg": esmPackage({ name: "agpl-pkg", license: "AGPL-3.0-only" }, { LICENSE: "GNU AFFERO GENERAL PUBLIC LICENSE" }) },
