@@ -902,4 +902,13 @@ Network:
 
 ## License
 
-MIT
+The PromptRail source code in this repository is licensed under the
+[Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE).
+
+Copyright 2026 Barbaros Emre Alagöz
+
+Revisions up to and including commit `49a2b12` were released under the MIT
+License.
+
+Third-party dependencies, including the packages bundled into the web build,
+remain under their own licenses.
