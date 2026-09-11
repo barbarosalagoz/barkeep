@@ -31,6 +31,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
-      # Offline unit tests for the SEP client. The live suite against the
+      # Offline unit tests: SEP client plus the third-party license gate
+      # (including fixture builds). The live suite against the
       # mock anchor (anchor.live.test.ts) runs locally: `npm test`.
       - run: npm run test:unit

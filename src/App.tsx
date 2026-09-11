@@ -1057,7 +1057,12 @@ function App() {
 
       <footer>
         Built on Stellar ·
-        PromptRail Launchpad
+        PromptRail Launchpad ·{" "}
+        <a
+          href={`${import.meta.env.BASE_URL}third-party-licenses.txt`}
+        >
+          Third-party licenses
+        </a>
       </footer>
     </main>
   );

@@ -1,0 +1,18 @@
+{
+  "@creit.tech/stellar-wallets-kit@2.6.0": {
+    "file": "creit.tech__stellar-wallets-kit@2.6.0.LICENSE",
+    "source": "https://github.com/Creit-Tech/Stellar-Wallets-Kit/blob/v2.6.0/LICENSE",
+    "gitBlob": "288fb66c9aa82d11e1247f7632a2e52afa6b56cb",
+    "reason": "The npm tarball ships no license file; this is the repository LICENSE at the v2.6.0 release tag."
+  },
+  "@stellar/freighter-api@6.0.0": {
+    "file": "stellar__freighter-api@6.0.0.LICENSE",
+    "source": "https://github.com/stellar/freighter/blob/@stellar/freighter-api@6.0.0/LICENSE",
+    "gitBlob": "957a4b87e66e817e645a894084a2fa4cfe63586c",
+    "reason": "The npm tarball ships no license file; this is the monorepo root LICENSE at the @stellar/freighter-api@6.0.0 release tag."
+  },
+  "preact-hooks@0.1.0": {
+    "coveredBy": "preact",
+    "reason": "preact/hooks/package.json is a private sub-package manifest (name preact-hooks, license MIT) inside the preact package; preact's LICENSE covers it."
+  }
+}

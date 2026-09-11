@@ -416,6 +416,14 @@ footer {
   font-size: 12px;
 }
 
+footer a {
+  color: #7c8190;
+}
+
+footer a:hover {
+  color: #a78bfa;
+}
+
 /* MOBILE */
 
 @media (max-width: 640px) {

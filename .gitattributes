@@ -1,0 +1,4 @@
+# Vendored upstream license texts must keep their exact bytes (their git blob
+# ids are recorded in build/license-overrides/overrides.json), so never
+# convert their line endings on checkout.
+build/license-overrides/*.LICENSE -text

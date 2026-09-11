@@ -386,6 +386,10 @@ SEP-38 → SEP-6 deposit (with trustline creation) → SEP-6 withdraw against th
 mock anchor, moving real Testnet USDC. Set `SEP_SKIP_LIVE=1` to skip the live
 suite offline.
 
+The offline suite also covers the build's license gate
+([build/](build/)): the allow-list, copyright extraction, and fixture builds
+that must fail for AGPL, unlicensed and private copyleft packages.
+
 ### Demo script
 
 ```bash
@@ -922,7 +926,9 @@ promptrail/
 │   └── contract/
 │       └── paymentTracker.ts      # typed client + RPC event fetching
 │
-├── public/
+├── build/
+│   ├── third-party-licenses.ts    # emits /third-party-licenses.txt, license gate
+│   └── license-overrides/         # upstream LICENSE texts for packages that ship none
 │
 ├── package.json
 ├── package-lock.json
@@ -1037,4 +1043,8 @@ Revisions up to and including commit `49a2b12` were released under the MIT
 License.
 
 Third-party dependencies, including the packages bundled into the web build,
-remain under their own licenses.
+remain under their own licenses. Each build ships their license texts and
+copyright notices at `/third-party-licenses.txt`, generated during
+`npm run build` by [rollup-plugin-license](https://github.com/mjeanroy/rollup-plugin-license)
+(MIT). The build fails if a bundled package is unlicensed or uses a license
+outside the permissive allow-list in `build/third-party-licenses.ts`.
