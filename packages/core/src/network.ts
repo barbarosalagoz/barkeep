@@ -30,7 +30,9 @@ export const networkPassphrase = (network: StellarNetwork): string =>
 
 /**
  * Parse a configured network name, accepting the spellings people actually
- * write. Empty and undefined mean Testnet, which is the safe default.
+ * write. Unset, empty and whitespace-only all mean Testnet, which is the safe
+ * default: trimming happens before the empty check so a value that is only
+ * whitespace is treated as absent rather than as a misconfiguration.
  *
  * `source` names what supplied the value, so a caller reading an env var can
  * still produce "Unsupported VITE_STELLAR_NETWORK ..." without this module
@@ -40,11 +42,15 @@ export function parseNetwork(
   value: string | undefined,
   source = "network"
 ): StellarNetwork {
-  if (value === undefined || value === "") {
+  if (value === undefined) {
     return "testnet";
   }
 
   const normalized = value.trim().toLowerCase();
+
+  if (normalized === "") {
+    return "testnet";
+  }
 
   if (
     normalized === "public" ||

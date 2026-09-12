@@ -11,15 +11,16 @@ describe("parseNetwork", () => {
     expect(() => parseNetwork("futurenet")).toThrow(/Unsupported/);
   });
 
-  /*
-   * Behaviour preserved from the web app verbatim: the empty check runs before
-   * trim(), so "" defaults but a whitespace-only value is a misconfiguration
-   * and throws. Asserted so the asymmetry is deliberate rather than discovered.
-   */
-  it("defaults an unset or empty value to testnet, but rejects whitespace", () => {
+  it("defaults an unset, empty or whitespace-only value to testnet", () => {
     expect(parseNetwork(undefined)).toBe("testnet");
     expect(parseNetwork("")).toBe("testnet");
-    expect(() => parseNetwork("  ")).toThrow(/Unsupported/);
+    expect(parseNetwork("  ")).toBe("testnet");
+    expect(parseNetwork("\t\n")).toBe("testnet");
+  });
+
+  it("still trims a value that names a real network", () => {
+    expect(parseNetwork("  public  ")).toBe("public");
+    expect(parseNetwork("\ttestnet\n")).toBe("testnet");
   });
 
   it("names the source in the message so callers keep their diagnostic", () => {
