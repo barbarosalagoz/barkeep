@@ -12,9 +12,13 @@ below is still a plan and remains unbuilt.
 
 Barkeep is a tab for AI agents on Stellar. A human opens a tab with a spending
 cap and a time window, an agent spends against it to pay for HTTP requests, and
-every payment lands on an itemised bill. The cap is enforced on-chain by an
-OpenZeppelin smart account, not by the agent and not by the MCP server.
-Section 4 states exactly how far that library's audits reach.
+every payment lands on an itemised bill. The cap is enforced on-chain, by a
+contract, not by the agent and not by the MCP server.
+
+That contract is **ours**. It is built on OpenZeppelin's `stellar-accounts`
+library, but the deployed code is written in this repository and has not been
+audited by anyone. Section 4.1 says exactly what is deployed and what the
+upstream audits do and do not cover.
 
 ---
 
@@ -41,8 +45,14 @@ These are hard rules for every decision below.
 4. **Testnet first.** Mainnet only with tiny caps and only after a written
    policy review covering the smart account, the policy contracts and the
    facilitator.
-5. **No custom custody contract.** Funds sit in an audited OpenZeppelin smart
-   account. We write policy modules, not custody.
+5. **No custom custody logic.** We do not write our own custody scheme: funds
+   sit in a smart account whose custody behaviour comes from OpenZeppelin's
+   `stellar-accounts` library, and we write policy modules on top of it.
+   This is **not** a claim that the deployed account is audited. The account
+   contract, both verifier contracts and every policy contract are written in
+   this repository and are unaudited (§4.1). The constraint limits how much
+   novel security-critical code we write; it does not transfer anyone's audit
+   to our contracts.
 6. **No Anthropic or Claude name or logo inside our own product, feature or
    company name**, and nothing implying Anthropic built or endorses it.
    Accurate descriptive use is allowed, so "Barkeep, an MCP server for Claude
@@ -54,7 +64,7 @@ These are hard rules for every decision below.
 
 ```mermaid
 flowchart LR
-  H[Human] -- passkey (secp256r1) --> SA[Smart account<br/>stellar-accounts 0.7.2]
+  H[Human] -- passkey (secp256r1) --> SA[Barkeep smart account<br/>our contract, on stellar-accounts 0.7.2]
   A[Agent in Claude Code] -- MCP tools --> S[Barkeep MCP server<br/>local, stdio]
   S -- scoped session key (ed25519) --> SA
   SA -- ContextRule + spending_limit policy --> L[(Stellar / Soroban)]
@@ -151,20 +161,26 @@ unaudited contract holding a deposit, which collides with constraint 5.
 
 Week 1 resolves this deliberately: most likely the web app stays on 17, the MCP
 server is a separate package pinned to what x402 expects, and the contract
-workspace pins the toolchain the audited crate expects. The x402 changelog gives
+workspace pins the toolchain `stellar-accounts` expects. The x402 changelog gives
 avoiding v17's XDR API rewrite as its reason for the v16 floor; that is upstream
 intent, not our finding.
 
 ---
 
-## 4. The tab: OpenZeppelin smart account
+## 4. The tab: a smart account built on OpenZeppelin's library
 
 Use **`stellar-accounts` 0.7.2 (MIT)** from `OpenZeppelin/stellar-contracts`,
 with `stellar-access`, `stellar-contract-utils` and `stellar-macros` as needed.
 **OpenZeppelin Relayer and its x402 facilitator plugin are AGPL-3.0 and are
 excluded by constraint 2** — confirmed through the GitHub licence API.
 
-What ships, with the audit caveats below:
+`stellar-accounts` is a **library, not a set of deployable contracts**. It
+contains no `#[contract]` outside its own tests: the verifiers are plain
+functions, and `SmartAccount` and `Policy` are traits with default bodies. Every
+contract that actually goes on chain is therefore written here. See §4.1 before
+repeating any audit claim.
+
+What the library provides, and our contracts wrap:
 
 - **Passkey signer.** `verifiers::webauthn` verifies secp256r1 via the Soroban
   host function, parsing clientDataJSON and checking the UP and UV flags. The
@@ -181,7 +197,8 @@ What ships, with the audit caveats below:
   each check, and panics with `SpendingLimitExceeded`. This is
   a true rolling window, not a fixed epoch.
 
-What does **not** ship, and must be written and audited by us:
+What the library does **not** provide, and we must write (and would have to
+pay to have audited):
 
 - **A payee allowlist.** `packages/accounts/src/policies/` contains only
   `simple_threshold`, `weighted_threshold` and `spending_limit`. The allowlist
@@ -204,15 +221,59 @@ Known limits to design around:
 - Spending history is capped (1000 entries in 0.7.2). A high-frequency agent can
   hit `HistoryCapacityExceeded` and be blocked until the window rolls. This
   argues for batching or for the future "upto" scheme.
-- **Audit reach is narrower than "audited" suggests.** `audits/` holds seven
-  reports (0.1.0-RC through 0.7.0), all produced by OpenZeppelin on its own
-  library; there is no independent third-party audit. The most recent report
-  covers commit `239a2a7`, which is tagged **v0.7.0-rc.1**: the published 0.7.2
-  is four tags past it (rc.2, 0.7.0, 0.7.1, 0.7.2). No crates.io release
-  corresponds exactly to audited code, so "pin the audited version" is not an
-  option. Pin 0.7.2 and diff it against `239a2a7`.
+- **Audit reach is narrower than "audited" suggests.** See §4.1: the audits
+  cover the upstream library at a commit four tags behind the release we use,
+  and cover none of our deployed contracts.
 - The WebAuthn verifier deliberately skips origin and rpIdHash validation; the
   source recommends putting an expiry in the signed payload.
+
+### 4.1 What is audited, and what is not
+
+This is the section to quote. Anywhere else that reads as an audit claim is
+either pointing here or is a bug.
+
+**Nothing Barkeep deploys has been audited.** Every contract below is written in
+this repository, reviewed by nobody outside it, and running on Testnet only.
+
+| Deployed contract | Source | Audited? |
+| --- | --- | --- |
+| Ed25519 verifier | `contracts/barkeep-verifier-ed25519` | **No** |
+| WebAuthn verifier | `contracts/barkeep-verifier-webauthn` | **No** |
+| Barkeep smart account | `contracts/barkeep-smart-account` | **No** |
+| Spending-limit policy | `contracts/barkeep-policy` | **No** |
+| Payee-allowlist policy | not yet written | **No** |
+
+Deployed addresses are in `deployments/testnet.json`.
+
+**What the upstream audits actually cover.** OpenZeppelin's `stellar-contracts`
+repository holds seven reports (0.1.0-RC through 0.7.0). Two limits matter:
+
+1. **They are first-party.** OpenZeppelin audited its own library. There is no
+   independent third-party audit.
+2. **They do not cover the release we use.** The most recent report covers commit
+   `239a2a7`, tagged **v0.7.0-rc.1**. The published `stellar-accounts` 0.7.2 we
+   depend on is four tags past it — rc.2, 0.7.0, 0.7.1, 0.7.2. No crates.io
+   release corresponds exactly to audited code, so "pin the audited version" is
+   not available. We pin `=0.7.2` and the gap to `239a2a7` is unreviewed.
+
+**What that leaves.** The audits are evidence about the *cryptographic and
+storage building blocks we call into*, at a nearby commit. They say nothing
+about our verifier contracts, our account contract, our policies, how we wire
+them together, or the four-tag delta in the library itself.
+
+**How to describe this accurately**, in a grant application or anywhere else:
+
+> Barkeep's smart account is built on OpenZeppelin's `stellar-accounts` library,
+> which OpenZeppelin has audited in-house at v0.7.0-rc.1. Barkeep's own
+> contracts — the verifiers, the account and the policies — are unaudited, run
+> on Testnet only, and an external review is budgeted before any mainnet use.
+
+Not accurate, and not to be written anywhere:
+
+> ~~Funds sit in an audited OpenZeppelin smart account.~~
+> ~~Barkeep uses audited contracts.~~
+
+Both imply our deployed code carries someone else's audit. It does not.
 
 ---
 
@@ -368,9 +429,9 @@ converts the only load-bearing unknown into a fact.
 | `@modelcontextprotocol/sdk` | ^1.12.1 | MIT | MCP server | Via `@x402/mcp`, or direct |
 | `@stellar/mpp` | 0.7.1 | MIT (npm) | MPP payment method | Repo ships **no LICENSE file**; ask upstream before relying on it |
 | `mppx` | ^0.6.29 | MIT | MPP protocol layer | Peer skew: latest is 0.9.3 |
-| `stellar-accounts` | 0.7.2 | MIT | Smart account, verifiers, policies | Audited by OZ itself |
+| `stellar-accounts` | 0.7.2 | MIT | Library of smart-account, verifier and policy building blocks — not deployable contracts | First-party OZ audit, at v0.7.0-rc.1 only, four tags behind this release (§4.1) |
 | `stellar-access`, `stellar-contract-utils`, `stellar-macros` | 0.7.2 | MIT | Admin, pausable/upgradeable, macros | As needed |
-| `soroban-sdk` | 26.1.0 | Apache-2.0 | Contract SDK | Required by the audited crate; repo is on 27.0.6 |
+| `soroban-sdk` | 26.1.0 | Apache-2.0 | Contract SDK | Required by `stellar-accounts` 0.7.2; payment-tracker is on 27.0.6 |
 | `@stellar/stellar-sdk` | 16.3.x / 17.x | Apache-2.0 | Stellar/Soroban client | Split by package; see §3.3 |
 | `@stellar/freighter-api` | 6.0.1 | Apache-2.0 | Freighter | Replaces part of the kit |
 | `@albedo-link/intent` | 0.12.0 | MIT | Albedo | Replaces part of the kit |
@@ -387,8 +448,8 @@ converts the only load-bearing unknown into a fact.
 | # | Risk | Impact | Mitigation |
 | --- | --- | --- | --- |
 | 1 | No payee allowlist ships with `stellar-accounts` | The tab caps *how much*, not *to whom* | Write a `payee_allowlist` policy; until it exists, cap tiny and log every payee |
-| 2 | Our policy contract is unaudited | A bug is a loss of funds | Testnet only; tiny caps; budget an external review before mainnet |
-| 3 | OZ audits are first-party only, and no published release matches an audited commit | Residual contract risk | Pin 0.7.2, diff against audited `239a2a7` (v0.7.0-rc.1), track upstream releases |
+| 2 | **Every contract we deploy is unaudited** — both verifiers, the account and the policies (§4.1) | A bug is a loss of funds | Testnet only; tiny caps; budget an external review before mainnet |
+| 3 | OZ audits are first-party only, and no published release matches an audited commit | Residual risk in the library we build on | Pin `=0.7.2`, diff against `239a2a7` (v0.7.0-rc.1), track upstream releases |
 | 4 | Public facilitator supports `stellar:testnet` only | No free mainnet path today | Testnet first; for mainnet, self-host a facilitator (core + stellar packages) and price the RPC |
 | 5 | Protocol 28 (CAP-83/85/86) mainnet vote scheduled 2026-09-16 | Ledger behaviour may shift under us. The auth-entry change x402 relies on is CAP-71, which already shipped in Protocol 27 | Keep x402 packages current; re-run the live suite after the vote |
 | 6 | stellar-sdk 15/16/17 and soroban-sdk 26/27 skew | `@stellar/mpp` and the contract workspace genuinely conflict; x402 only duplicates the SDK | Split packages by runtime; pin deliberately in week 1 |
@@ -451,6 +512,15 @@ the policy review.
 ---
 
 ## 13. Noted, not built
+
+A **WebAuthn virtual authenticator for CI**. Passkey registration needs a
+browser: `navigator.credentials.create()` has no Node equivalent, and neither
+the Stellar CLI nor any installed package offers one. Chrome DevTools Protocol
+can create a software authenticator (`WebAuthn.addVirtualAuthenticator`) that
+produces genuine WebAuthn-format assertions, which would make the passkey path
+a regression test instead of a manual step. Worth having; not on the v1 path,
+and never a substitute for testing against a real authenticator, since a
+virtual one is not hardware-backed.
 
 An **"upto" scheme contract** in Rust/Soroban: authorize up to a cap, let the
 seller settle the actual usage once, refund the remainder. It fits metered APIs

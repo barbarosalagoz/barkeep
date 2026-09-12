@@ -10,7 +10,12 @@
     "",
     "Testnet only. There is deliberately no mainnet file: per",
     "docs/ARCHITECTURE-v2.md constraint 4, mainnet needs a written policy",
-    "review first."
+    "review first.",
+    "",
+    "AUDIT STATUS: none of these contracts is audited. They are written in",
+    "this repository and run on Testnet only. The OpenZeppelin audits cover",
+    "the stellar-accounts LIBRARY at v0.7.0-rc.1, four tags behind the 0.7.2",
+    "we depend on, and cover none of this code. See ARCHITECTURE-v2.md 4.1."
   ],
   "network": "testnet",
   "networkPassphrase": "Test SDF Network ; September 2015",
@@ -21,13 +26,15 @@
       "id": "CCVOYY3CQGSJV42INAUOQMBSX2OIEOX355MUWRSHAW4LEHQNF3RQR5NJ",
       "crate": "contracts/barkeep-verifier-ed25519",
       "wasmHash": "a4ea25c831cbd5cfdf6b90e64e42d892b7ab77c77c249f3396e10e6d9ac74da4",
-      "deployTx": "f5383bc094de9a5c75451306414eacf73e2d8fdb89ede42a22a2d373e85725ac"
+      "deployTx": "f5383bc094de9a5c75451306414eacf73e2d8fdb89ede42a22a2d373e85725ac",
+      "audited": false
     },
     "verifierWebAuthn": {
       "id": "CBZ5BMHGTQAWIGF4ACZCOHLLYSQFKCYXRV5TFWCQ5T3JYFRHEEJHF3KL",
       "crate": "contracts/barkeep-verifier-webauthn",
       "wasmHash": "2f2daf8ad99b63a6ea56ccf8ab442264e612236e62e5df82201f562fcd0c38dc",
-      "deployTx": "17949daa166f1dcd11c8a62352ff8cf633b7bb53a9d73b5d43730aac996ea978"
+      "deployTx": "17949daa166f1dcd11c8a62352ff8cf633b7bb53a9d73b5d43730aac996ea978",
+      "audited": false
     }
   }
 }

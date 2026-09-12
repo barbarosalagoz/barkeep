@@ -1,5 +1,11 @@
 # Deployments and keys
 
+**None of the contracts recorded here is audited.** They are written in this
+repository and run on Testnet only. The OpenZeppelin audits cover the
+`stellar-accounts` *library* at v0.7.0-rc.1 — four tags behind the 0.7.2 we
+depend on — and cover none of this code. See `docs/ARCHITECTURE-v2.md` §4.1
+before repeating any audit claim.
+
 Testnet only. Mainnet is closed until the policy review in
 `docs/ARCHITECTURE-v2.md` constraint 4 and §10 risk 2 is done.
 

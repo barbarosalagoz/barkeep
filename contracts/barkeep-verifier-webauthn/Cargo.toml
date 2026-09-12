@@ -10,7 +10,7 @@ license = "Apache-2.0"
 crate-type = ["cdylib", "rlib"]
 doctest = false
 
-# Pinned to the audited crate's requirement, not the workspace's soroban-sdk.
+# Pinned to stellar-accounts' requirement, not the workspace's soroban-sdk.
 # See contracts/barkeep-policy/Cargo.toml for the full reasoning.
 [dependencies]
 soroban-sdk = "=26.1.0"
