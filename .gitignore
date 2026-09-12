@@ -32,3 +32,12 @@ contracts/*/test_snapshots/
 
 # Local editor/agent tooling
 .claude/
+
+# Key material must never be staged. The real defence is that keys live outside
+# the repo (see docs/DEPLOYMENTS.md); this is the backstop for a stray paste.
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key

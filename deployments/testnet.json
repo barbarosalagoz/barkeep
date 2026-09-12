@@ -1,0 +1,33 @@
+{
+  "$comment": [
+    "Deployed Barkeep contract addresses on Stellar Testnet.",
+    "",
+    "These are public on-chain identifiers, not secrets: every one of them is",
+    "already readable by anyone from the ledger, and they are useless without",
+    "the keys that authorise calls. The keys live outside the repository (see",
+    "docs/DEPLOYMENTS.md). Checking the ids in is what makes a deployment",
+    "reproducible instead of living in one person's shell history.",
+    "",
+    "Testnet only. There is deliberately no mainnet file: per",
+    "docs/ARCHITECTURE-v2.md constraint 4, mainnet needs a written policy",
+    "review first."
+  ],
+  "network": "testnet",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "deployer": "GAM225BSUJZCO3GHNOSW3APCUI5XNX2ECN27A7CAMSLL3EHGEYMWLGHT",
+  "contracts": {
+    "verifierEd25519": {
+      "id": "CCVOYY3CQGSJV42INAUOQMBSX2OIEOX355MUWRSHAW4LEHQNF3RQR5NJ",
+      "crate": "contracts/barkeep-verifier-ed25519",
+      "wasmHash": "a4ea25c831cbd5cfdf6b90e64e42d892b7ab77c77c249f3396e10e6d9ac74da4",
+      "deployTx": "f5383bc094de9a5c75451306414eacf73e2d8fdb89ede42a22a2d373e85725ac"
+    },
+    "verifierWebAuthn": {
+      "id": "CBZ5BMHGTQAWIGF4ACZCOHLLYSQFKCYXRV5TFWCQ5T3JYFRHEEJHF3KL",
+      "crate": "contracts/barkeep-verifier-webauthn",
+      "wasmHash": "2f2daf8ad99b63a6ea56ccf8ab442264e612236e62e5df82201f562fcd0c38dc",
+      "deployTx": "17949daa166f1dcd11c8a62352ff8cf633b7bb53a9d73b5d43730aac996ea978"
+    }
+  }
+}
