@@ -17,26 +17,29 @@
  * receipt types and decimal-string helpers. Anything that needs an SDK type
  * belongs in the consumer that owns that SDK version.
  *
+ * Note what this rule is not about: handling Stellar *data* is fine, and
+ * errors.ts does it. classifyHorizonError reads a Horizon error body through a
+ * structural type written out by hand. Describing a wire shape costs nothing;
+ * importing the SDK's declaration of it would cost type identity.
+ *
  * Enforced by no-stellar-dependency.test.ts, which fails the build on any
  * @stellar/* import or dependency. See README.md.
  */
 
-/** Stellar networks Barkeep runs against. */
-export type StellarNetwork = "testnet" | "public";
+export {
+  AppError,
+  WALLET_INSTALL_URLS,
+  classifyError,
+  classifyHorizonError,
+  insufficientBalance,
+  userRejected,
+  walletNotFound,
+} from "./errors.ts";
+export type { AppErrorKind } from "./errors.ts";
 
-/*
- * Network passphrases, as plain strings.
- *
- * These are the values of Networks.PUBLIC and Networks.TESTNET in
- * @stellar/stellar-sdk. They are protocol constants, fixed since 2015, and
- * inlining them is what lets the network configuration live here instead of
- * pulling the SDK across the boundary described above.
- */
-export const NETWORK_PASSPHRASES: Readonly<Record<StellarNetwork, string>> = {
-  public: "Public Global Stellar Network ; September 2015",
-  testnet: "Test SDF Network ; September 2015",
-};
-
-/** The passphrase for a network, by name. */
-export const networkPassphrase = (network: StellarNetwork): string =>
-  NETWORK_PASSPHRASES[network];
+export {
+  NETWORK_PASSPHRASES,
+  networkPassphrase,
+  parseNetwork,
+} from "./network.ts";
+export type { StellarNetwork } from "./network.ts";

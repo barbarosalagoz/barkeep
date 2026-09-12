@@ -16,9 +16,10 @@
  * process.env.
  */
 
-import { NETWORK_PASSPHRASES } from "@barkeep/core";
+import { NETWORK_PASSPHRASES, parseNetwork } from "@barkeep/core";
+import type { StellarNetwork } from "@barkeep/core";
 
-export type StellarNetwork = "testnet" | "public";
+export type { StellarNetwork };
 
 type EnvRecord = Record<string, string | undefined>;
 
@@ -72,36 +73,13 @@ export function readEnv(name: string): string | undefined {
   return undefined;
 }
 
-export function parseNetwork(value: string | undefined): StellarNetwork {
-  if (value === undefined || value === "") {
-    return "testnet";
-  }
-
-  const normalized = value.trim().toLowerCase();
-
-  if (
-    normalized === "public" ||
-    normalized === "pubnet" ||
-    normalized === "mainnet"
-  ) {
-    return "public";
-  }
-
-  if (normalized === "testnet") {
-    return "testnet";
-  }
-
-  throw new Error(
-    `Unsupported VITE_STELLAR_NETWORK "${value}" (use "testnet" or "public").`
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /* Network                                                             */
 /* ------------------------------------------------------------------ */
 
 export const STELLAR_NETWORK: StellarNetwork = parseNetwork(
-  readEnv("VITE_STELLAR_NETWORK")
+  readEnv("VITE_STELLAR_NETWORK"),
+  "VITE_STELLAR_NETWORK"
 );
 
 export const NETWORK_PASSPHRASE: string = NETWORK_PASSPHRASES[STELLAR_NETWORK];

@@ -7,7 +7,7 @@ import {
   explorerTxUrl,
 } from "../config/stellar";
 
-import { AppError, classifyError } from "../errors";
+import { AppError, classifyError } from "@barkeep/core";
 
 import {
   STATUS_LABELS,

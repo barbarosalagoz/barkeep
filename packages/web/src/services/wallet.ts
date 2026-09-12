@@ -17,7 +17,7 @@ import {
   NETWORK_PASSPHRASE,
   STELLAR_NETWORK,
 } from "../config/stellar";
-import { AppError, classifyError, walletNotFound } from "../errors";
+import { AppError, classifyError, walletNotFound } from "@barkeep/core";
 
 /*
  * The network Barkeep runs on comes from src/config/stellar.ts, so the

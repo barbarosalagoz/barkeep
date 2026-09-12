@@ -26,7 +26,7 @@ import {
   classifyError,
   classifyHorizonError,
   insufficientBalance,
-} from "./errors";
+} from "@barkeep/core";
 
 import PaymentTracker from "./components/PaymentTracker";
 import TryRamp from "./components/TryRamp";

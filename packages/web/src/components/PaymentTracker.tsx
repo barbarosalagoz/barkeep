@@ -23,7 +23,7 @@ import type {
   TxStatus,
 } from "../contract/paymentTracker";
 
-import { AppError, classifyError, insufficientBalance } from "../errors";
+import { AppError, classifyError, insufficientBalance } from "@barkeep/core";
 
 interface PaymentTrackerProps {
   walletAddress: string;

@@ -14,7 +14,7 @@ import {
 } from "@stellar/stellar-sdk";
 
 import { HORIZON_URL, NETWORK_PASSPHRASE } from "../../config/stellar";
-import { classifyHorizonError } from "../../errors";
+import { classifyHorizonError } from "@barkeep/core";
 
 import { AnchorError } from "./errors";
 import type { AnchorAsset } from "./sep1";

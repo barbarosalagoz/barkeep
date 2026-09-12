@@ -2,6 +2,20 @@
 
 SDK-free primitives shared by `@barkeep/web` and `@barkeep/mcp`.
 
+## Contents
+
+| Module | What |
+| --- | --- |
+| `src/errors.ts` | The app-wide error taxonomy: `AppError`, `AppErrorKind`, the named constructors, and `classifyError` / `classifyHorizonError`. `docs/ARCHITECTURE-v2.md` §7 extends this with payment, policy and tab kinds, which are MCP-server concerns — which is why it is here and not in the web app |
+| `src/network.ts` | The network primitive: `StellarNetwork`, `parseNetwork`, and the protocol passphrases |
+
+What is deliberately **not** here: `packages/web/src/config/stellar.ts`. It reads
+`import.meta.env.VITE_*`, which is Vite-specific both in typing and in build
+semantics, and the bulk of it is Horizon, explorer and SEP-anchor configuration
+that the MCP server has no use for. Only its network type and parser were shared,
+and those moved; the env reading and the derived constants stayed with the app
+that owns them.
+
 ## Hard constraint: no `@stellar/*`, ever
 
 This package must never depend on `@stellar/*` — not in `package.json`, not in

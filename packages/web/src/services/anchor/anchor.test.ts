@@ -6,7 +6,6 @@
 import { Keypair, Memo, Networks, WebAuth } from "@stellar/stellar-sdk";
 import { describe, expect, it } from "vitest";
 
-import { parseNetwork } from "../../config/stellar";
 
 import { AnchorError } from "./errors";
 import { buildMemo, normalizeAmount } from "./horizon";
@@ -49,16 +48,6 @@ const tomlOptions = {
   fiatCode: "TRY",
   networkPassphrase: Networks.TESTNET,
 };
-
-describe("config", () => {
-  it("parses network names", () => {
-    expect(parseNetwork(undefined)).toBe("testnet");
-    expect(parseNetwork("testnet")).toBe("testnet");
-    expect(parseNetwork("public")).toBe("public");
-    expect(parseNetwork("MAINNET")).toBe("public");
-    expect(() => parseNetwork("futurenet")).toThrow(/Unsupported/);
-  });
-});
 
 describe("SEP-1 parseAnchorToml", () => {
   it("extracts endpoints, signing key, issuer and accounts", () => {

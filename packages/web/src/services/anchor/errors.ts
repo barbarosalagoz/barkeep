@@ -6,7 +6,7 @@
  * matching an anchor message like "quote not found" onto WALLET_NOT_FOUND.
  */
 
-import { AppError } from "../../errors";
+import { AppError } from "@barkeep/core";
 
 export type AnchorErrorCode =
   /** stellar.toml could not be fetched. */

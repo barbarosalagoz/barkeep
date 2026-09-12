@@ -11,7 +11,7 @@
  * are the home domain and network in src/config/stellar.ts.
  */
 
-import { insufficientBalance } from "../../errors";
+import { insufficientBalance } from "@barkeep/core";
 
 import { AnchorError } from "./errors";
 import { ensureTrustline, getAssetHolding, sendAssetPayment } from "./horizon";

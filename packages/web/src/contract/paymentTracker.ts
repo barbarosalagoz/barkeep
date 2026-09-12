@@ -20,7 +20,7 @@ import {
 
 import { signWithWallet } from "../services/wallet";
 
-import { AppError, classifyError } from "../errors";
+import { AppError, classifyError } from "@barkeep/core";
 
 /** Deployed on Stellar Testnet. See the Smart Contract section of the README. */
 export const PAYMENT_TRACKER_ID =
