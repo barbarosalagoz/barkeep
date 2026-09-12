@@ -14,11 +14,20 @@
   "scripts": {
     "dev": "npm run dev --workspace @barkeep/web",
     "build": "npm run build --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "preview": "npm run preview --workspace @barkeep/web",
     "test": "npm run test --workspaces --if-present",
     "test:watch": "npm run test:watch --workspace @barkeep/web",
     "test:unit": "npm run test:unit --workspaces --if-present",
     "demo:sep": "npm run demo:sep --workspace @barkeep/web"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.4",
+    "globals": "^17.11.0",
+    "typescript-eslint": "^8.67.0"
   }
 }
