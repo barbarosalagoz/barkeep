@@ -79,9 +79,7 @@ contextRuleIds)` computes the 0.7.2 concatenation, which 0.9.0 rejects.
 It needs the account address as a third input and to hash the map above.
 `contextRuleIdsToXdr` becomes an internal detail of the preimage rather than a
 hashed input of its own. `buildAuthPayload` and `signerToScVal` do not change:
-#868 leaves `AuthPayload` and `Signer` as they were. The file header's
-reference to "ARCHITECTURE-v2 §14 q5" is already stale (§14 has four
-questions); fix it while rewriting.
+#868 leaves `AuthPayload` and `Signer` as they were.
 
 **`packages/mcp-server/src/authDigest.test.ts`.** Every `authDigest` vector is a
 0.7.2 digest. Regenerate them from `AuthDigestPreimage::digest` in a real `Env`
