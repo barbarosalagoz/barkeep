@@ -1,0 +1,34 @@
+[package]
+name = "barkeep-v09-verifier-webauthn"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "WebAuthn verifier contract on stellar-accounts 4529d70"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+# stellar-accounts pinned by exact commit, not by version: 4529d70 is
+# OpenZeppelin/stellar-contracts#868 (the AuthDigestPreimage change), squash-
+# merged into the unpublished v0.9.0 branch. No crates.io release carries it
+# yet. Confirmed as #868's merge_commit_sha via the GitHub API, and locally:
+# its storage.rs defines AuthDigestPreimage, its parent's does not.
+# docs/MIGRATION-stellar-accounts-0.9.0.md.
+#
+# soroban-sdk is =27.0.6, not the 27.0.2 upstream's own Cargo.lock resolves at
+# that commit. Cargo holds one version per semver-compatible range in a
+# lockfile, and contracts/payment-tracker already resolves 27.0.6; pinning
+# 27.0.2 here would fail resolution, and payment-tracker is not ours to move.
+# stellar-accounts at 4529d70 asks for ^27.0.2, which 27.0.6 satisfies.
+#
+# The =0.7.2 crate of the same name without "-v09" is the deployed, recorded
+# baseline and is unchanged.
+[dependencies]
+soroban-sdk = "=27.0.6"
+stellar-accounts = { git = "https://github.com/OpenZeppelin/stellar-contracts", rev = "4529d708c47866bec790223b88036f9aa9e404b3" }
+
+[dev-dependencies]
+soroban-sdk = { version = "=27.0.6", features = ["testutils"] }
+p256 = { version = "0.13.2", features = ["ecdsa"] }

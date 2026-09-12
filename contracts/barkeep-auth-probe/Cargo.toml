@@ -1,0 +1,21 @@
+[package]
+name = "barkeep-auth-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Test-only target contract for the smart-account client-flow cases on Testnet"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+# No stellar-accounts dependency: this is the contract a smart account
+# authorises a call INTO, so it needs only require_auth. It is deployed once and
+# shared by the 0.7.2 and 4529d70 cases. Workspace soroban-sdk, like
+# payment-tracker.
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
