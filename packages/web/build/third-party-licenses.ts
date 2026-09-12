@@ -22,7 +22,7 @@
  * The runtime helpers the build tools inject are credited at the end.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -219,8 +219,81 @@ function readProjectName(root: string): string | null {
   return typeof json?.name === "string" ? json.name : null;
 }
 
+/** How far up from `root` to look for the workspace root's package.json. */
+const WORKSPACE_SEARCH_DEPTH = 6;
+
+/**
+ * Directories matched by one npm `workspaces` entry, resolved against `base`.
+ *
+ * Only the trailing single-segment wildcard npm workspaces actually use in
+ * practice ("packages/*") and literal paths are supported; anything else is
+ * ignored rather than half-matched.
+ */
+function expandWorkspaceGlob(base: string, glob: string): string[] {
+  const star = glob.indexOf("*");
+
+  if (star === -1) return [join(base, glob)];
+  if (glob.slice(star) !== "*") return [];
+
+  const parent = join(base, glob.slice(0, star));
+
+  try {
+    return readdirSync(parent, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => join(parent, entry.name));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The project's own package names: `root`'s, plus every sibling of the npm
+ * workspace that contains it.
+ *
+ * First-party code is bundled like any dependency, but it is not a third party:
+ * it is covered by the repository's own LICENSE and belongs in neither the
+ * notices file nor its completeness check. Before the workspace split this was
+ * a single name, which was enough when the repository was one package.
+ * @barkeep/web now bundles @barkeep/core, a sibling that ships no LICENSE of
+ * its own, and without this it would be demanded as a vendored override — which
+ * would be a false claim that our own code is upstream third-party.
+ *
+ * Falls back to just `root`'s name when no workspace root is found, so a
+ * standalone project (and every build fixture in the tests) behaves as before.
+ */
+function firstPartyNames(root: string): Set<string> {
+  const names = new Set<string>();
+  const own = readProjectName(root);
+
+  if (own) names.add(own);
+
+  let dir = root;
+
+  for (let depth = 0; depth < WORKSPACE_SEARCH_DEPTH; depth++) {
+    const globs = readJson(join(dir, "package.json"))?.workspaces;
+
+    if (Array.isArray(globs)) {
+      for (const glob of globs) {
+        if (typeof glob !== "string") continue;
+
+        for (const packageDir of expandWorkspaceGlob(dir, glob)) {
+          const name = readProjectName(packageDir);
+          if (name) names.add(name);
+        }
+      }
+      break;
+    }
+
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  return names;
+}
+
 /** Directory of an installed package, even when its exports hide package.json. */
-function packageDir(name: string, from: string): string {
+export function packageDir(name: string, from: string): string {
   const require = createRequire(from);
 
   try {
@@ -412,10 +485,10 @@ export function renderNotices(
   sourceNotices: Map<string, string[]> = new Map()
 ): string {
   const overrides = loadOverrides(root);
-  const self = readProjectName(root);
+  const firstParty = firstPartyNames(root);
 
   const bundled = dependencies
-    .filter((dependency) => dependency.name && dependency.name !== self)
+    .filter((dependency) => dependency.name && !firstParty.has(dependency.name))
     .sort((a, b) => byCodePoint(`${a.name}@${a.version}`, `${b.name}@${b.version}`));
 
   // Pass 1: each package's own text, or a vendored override.

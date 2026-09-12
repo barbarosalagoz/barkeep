@@ -14,11 +14,12 @@ import {
   copyrightLines,
   isAllowedLicense,
   owningPackage,
+  packageDir,
   renderNotices,
   sourceNoticesByPackage,
 } from "./third-party-licenses.ts";
 
-/** Repo root, independent of the directory vitest was started from. */
+/** This package's root (packages/web), independent of vitest's cwd. */
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function dependency(overrides: Partial<Record<keyof Dependency, unknown>>): Dependency {
@@ -126,6 +127,22 @@ describe("renderNotices", () => {
     expect(text).toContain("Bundled packages: 0");
   });
 
+  /*
+   * ROOT is packages/web, whose workspace root two levels up declares
+   * packages/*, so this exercises the real layout rather than a fixture.
+   */
+  it("leaves a first-party workspace sibling out of the list", () => {
+    const text = renderNotices([dependency({ name: "@barkeep/core", version: "0.0.0", private: true })], ROOT, []);
+
+    expect(text).toContain("Bundled packages: 0");
+  });
+
+  it("still treats a package outside the workspace as third-party", () => {
+    expect(() =>
+      renderNotices([dependency({ name: "@barkeep/not-a-package", licenseText: null })], ROOT, [])
+    ).toThrow(/ships no license text/);
+  });
+
   it("normalises CRLF license texts", () => {
     const text = renderNotices(
       [dependency({ licenseText: "MIT License\r\n\r\nCopyright (c) 2024 CRLF Author\r\n" })],
@@ -229,9 +246,14 @@ describe("renderNotices", () => {
 });
 
 describe("module attribution", () => {
+  /*
+   * Resolve the kit rather than assuming a node_modules location: npm hoists it
+   * to the workspace root, not this package's own node_modules, and its
+   * "exports" map hides package.json from a direct require.resolve.
+   */
   const kitFile = join(
-    ROOT,
-    "node_modules/@creit.tech/stellar-wallets-kit/esm/deps/jsr.io/@std/encoding/1.0.11/hex.js"
+    packageDir("@creit.tech/stellar-wallets-kit", fileURLToPath(import.meta.url)),
+    "esm/deps/jsr.io/@std/encoding/1.0.11/hex.js"
   );
 
   it("attributes a bundled file to the package that owns it", () => {

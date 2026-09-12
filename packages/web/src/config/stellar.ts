@@ -16,7 +16,7 @@
  * process.env.
  */
 
-import { Networks } from "@stellar/stellar-sdk";
+import { NETWORK_PASSPHRASES } from "@barkeep/core";
 
 export type StellarNetwork = "testnet" | "public";
 
@@ -104,8 +104,7 @@ export const STELLAR_NETWORK: StellarNetwork = parseNetwork(
   readEnv("VITE_STELLAR_NETWORK")
 );
 
-export const NETWORK_PASSPHRASE: string =
-  STELLAR_NETWORK === "public" ? Networks.PUBLIC : Networks.TESTNET;
+export const NETWORK_PASSPHRASE: string = NETWORK_PASSPHRASES[STELLAR_NETWORK];
 
 export const NETWORK_LABEL: string =
   STELLAR_NETWORK === "public" ? "Stellar Mainnet" : "Stellar Testnet";
