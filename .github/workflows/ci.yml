@@ -34,9 +34,13 @@ jobs:
       - run: npm install -g npm@12
       - run: npm ci
       - run: npm run lint
+      # @barkeep/mcp is not built by vite, so its types are only checked here.
+      - run: npm run typecheck
       - run: npm run build
       # Offline unit tests across every workspace: the SEP client, the
-      # third-party license gate (including fixture builds), and @barkeep/core's
-      # no-@stellar/* constraint check. The live suite against the mock anchor
-      # (anchor.live.test.ts) runs locally: `npm test`.
+      # third-party license gate (including fixture builds), @barkeep/core's
+      # no-@stellar/* constraint check, and the MCP server's tool surface. The
+      # suites that need the network stay out: the mock anchor
+      # (anchor.live.test.ts) and the Testnet scripts under */scripts/, which
+      # are run by hand.
       - run: npm run test:unit

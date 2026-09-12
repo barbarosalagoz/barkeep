@@ -78,6 +78,31 @@
       "ledger": 4643500,
       "successful": false,
       "error": "Error(Contract, #3002) UnvalidatedContext"
+    },
+    "mcpTools": {
+      "script": "packages/mcp-server/scripts/tab-tools-testnet.mjs",
+      "openTab": {
+        "tx": "8d484b10173daf40cedee3e16a1b6f38b5e3c36d6de975d68874bf67edf43ca4",
+        "ledger": 4643834,
+        "successful": true
+      },
+      "transferOutsideTheServer": {
+        "tx": "91a0eaa211e42e1fa8ace1e40d7e993394f722a2c09a360b475a491c85b7bdf3",
+        "ledger": 4643836,
+        "successful": true,
+        "note": "tab_status reflected this without being told: spent 0 -> 0.0002"
+      },
+      "closeTab": {
+        "tx": "b829c2c02fb1faf7d7e57f2403159835d2f1059b7e51298ec6ee3f3c91ce42c5",
+        "ledger": 4643837,
+        "successful": true
+      },
+      "transferAfterClose": {
+        "tx": "afda2b58582ea1fc8a88a4cd1d6b3f037d04f2083aa1c959d84334497041e877",
+        "ledger": 4643838,
+        "successful": false,
+        "error": "Error(Contract, #3000) ContextRuleNotFound"
+      }
     }
   }
 }

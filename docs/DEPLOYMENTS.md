@@ -90,6 +90,31 @@ A passkey is bound to the origin it was created on, so one made at
 verifier deliberately skips origin and rpIdHash validation
 (`docs/ARCHITECTURE-v2.md` §4). Re-register per origin once that gap closes.
 
+## MCP server state
+
+`@barkeep/mcp` keeps tab metadata and an append-only receipt log outside the
+repository, at the first of:
+
+1. `$BARKEEP_STATE_DIR` — explicit override, used by the tests
+2. `$CLAUDE_PLUGIN_DATA/barkeep` — set by the host when Barkeep runs as a Claude
+   Code plugin, and survives plugin updates, which is the point (§5)
+3. `$XDG_STATE_HOME/barkeep`
+4. `~/.local/state/barkeep`
+
+Not the repository: this is per-machine runtime state, not source, and it would
+be one bad `git add` from being committed. Not a temp directory either — tabs
+outlive a reboot, and a tab whose record vanished is a live on-chain rule that
+nobody can close by id.
+
+**It holds no key material.** Contract ids, ledger numbers, amounts, transaction
+hashes and the agent's *public* key. Signing keys are read from the environment
+(`BARKEEP_ADMIN_SECRET`, `BARKEEP_AGENT_SECRET`, `BARKEEP_SUBMITTER_SECRET`),
+never written. `src/server.test.ts` asserts this against the real files.
+
+This departs from §5, which puts "the session key" in the plugin data
+directory. Storing a spending key next to the metadata describing what it may
+spend is worth avoiding when the alternative costs one environment variable.
+
 ## Reproducing a deployment
 
 ```sh
