@@ -121,7 +121,7 @@ describe("renderNotices", () => {
   });
 
   it("leaves the project itself out of the list", () => {
-    const text = renderNotices([dependency({ name: "promptrail", version: "0.0.0", private: true })], ROOT, []);
+    const text = renderNotices([dependency({ name: "@barkeep/web", version: "0.0.0", private: true })], ROOT, []);
 
     expect(text).toContain("Bundled packages: 0");
   });
