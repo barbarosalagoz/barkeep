@@ -22,10 +22,40 @@ export type StellarNetwork = "testnet" | "public";
 
 type EnvRecord = Record<string, string | undefined>;
 
-/** Read an env var from Vite (import.meta.env) or Node (process.env). */
+/*
+ * Named reads only, one expression per variable.
+ *
+ * Vite replaces each `import.meta.env.VITE_*` expression with its literal
+ * value at build time. Reading `import.meta.env` as an object instead makes
+ * Vite inline EVERY variable it knows, which on Vercel includes the git
+ * commit message, the commit author, and the project and deployment ids.
+ *
+ * The reads are wrapped because `import.meta.env` does not exist when this
+ * module runs under plain Node (scripts/sep-demo.ts).
+ */
+function viteValue(read: () => unknown): string | undefined {
+  try {
+    const value = read();
+
+    return typeof value === "string" ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The only variables that may reach the browser bundle. */
+const VITE_ENV: EnvRecord = {
+  VITE_STELLAR_NETWORK: viteValue(() => import.meta.env.VITE_STELLAR_NETWORK),
+  VITE_HORIZON_URL: viteValue(() => import.meta.env.VITE_HORIZON_URL),
+  VITE_ANCHOR_HOME_DOMAIN: viteValue(() => import.meta.env.VITE_ANCHOR_HOME_DOMAIN),
+  VITE_ANCHOR_ASSET_CODE: viteValue(() => import.meta.env.VITE_ANCHOR_ASSET_CODE),
+  VITE_ANCHOR_FIAT_CODE: viteValue(() => import.meta.env.VITE_ANCHOR_FIAT_CODE),
+  VITE_ANCHOR_SANDBOX: viteValue(() => import.meta.env.VITE_ANCHOR_SANDBOX),
+};
+
+/** Read an env var from Vite (named keys only) or Node (process.env). */
 export function readEnv(name: string): string | undefined {
-  const viteEnv = (import.meta as { env?: EnvRecord }).env;
-  const fromVite = viteEnv?.[name];
+  const fromVite = VITE_ENV[name];
 
   if (typeof fromVite === "string" && fromVite.length > 0) {
     return fromVite;

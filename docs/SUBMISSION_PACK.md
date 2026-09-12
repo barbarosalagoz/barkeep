@@ -3,7 +3,7 @@
 Working notes and paste-ready text for the Stellar **Journey to Mastery** monthly
 challenge submissions (Rise In). One section per belt.
 
-> **Update 2026-09-11:** xBull was removed from the shipped wallet set for
+> **Update 2026-09-12:** xBull was removed from the shipped wallet set for
 > licensing reasons (its connector ships without a license; upstream is
 > AGPL-3.0). The app now offers Freighter and Albedo, and the paste-ready
 > submission text below says so. The dated verification records below still

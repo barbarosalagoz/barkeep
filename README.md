@@ -429,7 +429,7 @@ wallet in a selection modal instead of being locked to one extension:
 | Freighter | Browser extension |
 | Albedo | Web-based signer |
 
-xBull was removed on 2026-09-11: the kit's xBull module bundles
+xBull was removed on 2026-09-12: the kit's xBull module bundles
 `@creit.tech/xbull-wallet-connect`, which ships without a license and whose
 upstream repository is AGPL-3.0. The connector is no longer in the web bundle,
 but `npm ci` still installs it, because StellarWalletsKit 2.6.0 pins it
