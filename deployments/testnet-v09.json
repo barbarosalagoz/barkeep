@@ -1,0 +1,285 @@
+{
+  "$comment": [
+    "Barkeep contracts on Stellar Testnet built on stellar-accounts commit",
+    "4529d708c47866bec790223b88036f9aa9e404b3 (OpenZeppelin/stellar-contracts#868,",
+    "AuthDigestPreimage), deployed ALONGSIDE the 0.7.2 set in testnet.json.",
+    "",
+    "testnet.json is the recorded 0.7.2 baseline and is not modified by this",
+    "deployment: its ids, done-test records and tx hashes are evidence.",
+    "",
+    "Public ledger identifiers, not secrets; see docs/DEPLOYMENTS.md.",
+    "",
+    "AUDIT STATUS: none of these contracts is audited, and 4529d70 is an",
+    "unpublished commit after every OpenZeppelin audit. Testnet only.",
+    "",
+    "replay072 holds two extra 0.7.2 accounts, deployed from the 0.7.2 wasm",
+    "already installed on chain (the hash recorded in testnet.json), so the",
+    "cross-account replay baseline never touches the recorded 0.7.2 account."
+  ],
+  "network": "testnet",
+  "networkPassphrase": "Test SDF Network ; September 2015",
+  "rpcUrl": "https://soroban-testnet.stellar.org",
+  "deployer": "GAM225BSUJZCO3GHNOSW3APCUI5XNX2ECN27A7CAMSLL3EHGEYMWLGHT",
+  "stellarAccounts": {
+    "git": "https://github.com/OpenZeppelin/stellar-contracts",
+    "rev": "4529d708c47866bec790223b88036f9aa9e404b3",
+    "branch": "v0.9.0",
+    "pr": 868,
+    "crateVersionField": "0.7.1",
+    "crateVersionNote": "The upstream workspace version was not bumped at this commit; the crate reports 0.7.1 although it is post-0.7.2 v0.9.0-branch code.",
+    "sorobanSdk": "27.0.6"
+  },
+  "contracts": {
+    "verifierEd25519": {
+      "id": "CD3353QQM4TUCYGNE3U3SDDMM7GTR4IN4C4DKVZV5C6ETXYEFYMFNNS2",
+      "crate": "contracts/barkeep-v09-verifier-ed25519",
+      "wasmHash": "f423024684938e7daf872f2887385d7d3e60f5f35b070e42146a782679969a95",
+      "deployTx": "d134ea6d1409de825d4edd7ab192457b5e92ed9db880fbd3e0b9db3c4cc958ab",
+      "audited": false
+    },
+    "verifierWebAuthn": {
+      "id": "CBXBSNGKEM2H4AKEKV5UBGYL2SUV6GKLSZA5FSVSF6GDVERKUH6GCXDB",
+      "crate": "contracts/barkeep-v09-verifier-webauthn",
+      "wasmHash": "4bacddf9dbd3194b87869fb7e24bf8a8d2a3ff01c89fe10ee93f85dfb7d4880d",
+      "deployTx": "23f2ce3b49babb86c25ebabd45d146795cfc0e96960943ae03f59c334748bad2",
+      "audited": false
+    },
+    "policySpendingLimit": {
+      "id": "CBLEYZMFUJV34DOP4PYIU4Z7CKNYJI7G4NLMHTBW72PJNDLCDBUESGFZ",
+      "crate": "contracts/barkeep-v09-policy",
+      "wasmHash": "2c3b503905a66c06cbbd8f271af51961811f1e9a87639791238471701c4e4fec",
+      "deployTx": "30e43de59ff3f00dd771a62d05adb435f0e3d7d451ffb0f22062d98fb409c761",
+      "audited": false
+    },
+    "smartAccount": {
+      "id": "CAGXFOD5YQPZUJPJRMVA2HT5ULKE7EERCFFWXBLHTSU3EQSZ7LFWPY7J",
+      "crate": "contracts/barkeep-v09-smart-account",
+      "wasmHash": "483fa29c23f0e15e13fe2f645883863ce4815beaa165ec6b01d0d5ca45df5c3b",
+      "deployTx": "c895e122e1c8dc263df6b7678a14504cb21d0889ffa1b11ba2d7d7574f8ac785",
+      "adminSigner": "GAPL4FFWCJ7TLUYU6USLKLXEFR7QIFVQ3XCEVTKO5MNDBO4IQYV5NK44",
+      "adminSignerNote": "External(verifierEd25519 above, admin ed25519 key), rule 0 (Default).",
+      "fundingTx": "9784c6409266074bce603cfefb8dd111b3f14a04464b49e0d781ea7865724d20",
+      "audited": false
+    },
+    "probeAccountA": {
+      "id": "CBBUT7CC36RBR4IKEAI6BOX64AJEZ7DYHE3E4WYFC3VBZQ2TDJGLL6OO",
+      "crate": "contracts/barkeep-v09-smart-account",
+      "wasmHash": "483fa29c23f0e15e13fe2f645883863ce4815beaa165ec6b01d0d5ca45df5c3b",
+      "deployTx": "c8380e71957edbdb00ce78206cf3a5b403f05ec9ff5ddce8fba71fd1fe85b1e2",
+      "audited": false
+    },
+    "probeAccountB": {
+      "id": "CDGEXSWIWKI4TUNB6AYRUBDRULJIUCU4ETI6WSF5MZKL5B23AJCAF7CY",
+      "crate": "contracts/barkeep-v09-smart-account",
+      "wasmHash": "483fa29c23f0e15e13fe2f645883863ce4815beaa165ec6b01d0d5ca45df5c3b",
+      "deployTx": "faf30b9b0467f123293b949367d0bb13b81bee0df24a052ad295f03b06177a48",
+      "audited": false
+    },
+    "authProbe": {
+      "id": "CC36Q5YIYFFWTWXZDWEV4AD2GDLZKAFEUZFXOXFH2YCDA4UTOEPGPJ5E",
+      "crate": "contracts/barkeep-auth-probe",
+      "wasmHash": "c7a8f2350c4a4bffa9b6d534e19386beb44104575951951c9ea2d4e6017c0b88",
+      "deployTx": "c2db88b3742096b6280d2f69350014637ec841564886ff6de3a4e03e34bdcc2a",
+      "note": "Test-only target shared by the 0.7.2 and 4529d70 client-flow cases.",
+      "audited": false
+    },
+    "token": {
+      "id": "CBXLQ3TCM6EB6KXBYDQVZ3NJO2SAL5FY5BZPMTLGQPROANSSP7RFHP3V",
+      "note": "The same TAB Stellar Asset Contract as testnet.json, reused, not redeployed.",
+      "audited": null
+    }
+  },
+  "replay072": {
+    "wasmHash": "fde9a23e170d3c3054ffe591ff6839ec836da105c3addf9d7e6a56d4f5465ebd",
+    "verifierEd25519": "CCVOYY3CQGSJV42INAUOQMBSX2OIEOX355MUWRSHAW4LEHQNF3RQR5NJ",
+    "probeAccountA": {
+      "id": "CBTLXOWPBBAMRVHLNVCHMELNTTLGUSQOSQAVM5BGDUNNVNEB5OHQGVLB",
+      "deployTx": "53247b7815e0b510c1e9d40dfd95aba24a407658afea003d9cb2f24b4694c905"
+    },
+    "probeAccountB": {
+      "id": "CD6YEXFHLKHP2WOZI4QWQ35VT726DP7CMCSJHGM5LUHKTVRKXUFGI6KI",
+      "deployTx": "98a47e9d85502471df9a8191bb71d30cda45bb117efd769c9ecea2ae82a1791c"
+    }
+  },
+  "agentSigner": "GDUQYLCSWA3CTGCK7XHAW622QRX54Q3FZQWOYUICUNLZZQOHCOXQD5TS",
+  "doneTests": {
+    "script": "packages/mcp-server/scripts/v09-tab-lifecycle-testnet.mjs",
+    "note": "Same three proofs as testnet.json doneTests, on the 4529d70 account, signed with authDigestV09. Agent rule id 1, cap 5000, expiry ledger 4644286. Successful flags and ledgers cross-checked on Horizon.",
+    "addAgentRule": {
+      "tx": "d57422a3e2be06c755eb8b9c1e7b549daef5ffa180db016de01a3e767074a1ef",
+      "ledger": 4644276,
+      "successful": true
+    },
+    "underCap": {
+      "tx": "f785643d32ca6439b346b508cfc1442b0a7be84f10936cac9056092cce6e266c",
+      "ledger": 4644277,
+      "successful": true
+    },
+    "overCap": {
+      "tx": "2095fbb1355e37d38995d38f443b65b222e7225c54846f1c12053e5b921f691c",
+      "ledger": 4644278,
+      "successful": false,
+      "error": "Error(Contract, #3221) SpendingLimitExceeded"
+    },
+    "afterExpiry": {
+      "tx": "4dc98c2f130d4b8b8b6d748199ae544caedd7e0a2372ca809bf06b1dd012aff0",
+      "ledger": 4644288,
+      "successful": false,
+      "error": "Error(Contract, #3002) UnvalidatedContext"
+    }
+  },
+  "clientFlow": {
+    "script": "packages/mcp-server/scripts/v09-client-flow-testnet.mjs",
+    "protocol": 28,
+    "note": "Refused cases were submitted with a footprint borrowed from a correctly signed donor with the same nonces, so each refusal is on chain. Cross-checked on Horizon.",
+    "setupRuleTxs": {
+      "v09A_external": {
+        "ruleId": 1,
+        "tx": "6fea059d5d25329d8c79c622629cfbd0fdc37d5c8cc69d3f52dcfcb60ebbf52f"
+      },
+      "v09A_delegated": {
+        "ruleId": 2,
+        "tx": "353e5ac044c598e7fdc6feeba511dcf89bb5d44134d34ada8f2a7ac0a927334d"
+      },
+      "v09B_external": {
+        "ruleId": 1,
+        "tx": "debcecaab7b0e8e403cc65c6924ddf602a1197ec6354939fdcb0a8445cbe4f0f"
+      },
+      "v072A_external": {
+        "ruleId": 1,
+        "tx": "334102d5959df19aacb766a5d4700d54bbcf7df2360ce810d6ebb5302a7e313a"
+      },
+      "v072B_external": {
+        "ruleId": 1,
+        "tx": "8fdb35e396952e04b4aead01074b55fff2059a29f865af94cc11ec7b2f005008"
+      }
+    },
+    "E1_authDigestView": {
+      "account": "CBBUT7CC36RBR4IKEAI6BOX64AJEZ7DYHE3E4WYFC3VBZQ2TDJGLL6OO",
+      "contextRuleIds": [
+        1
+      ],
+      "signaturePayload": "ca438a0eb3cede1d913c49eb9b629171a5698249420d84690fe61b27ede03967",
+      "clientDigest": "d4bf07e467f1cd394f0c9d14432c8a1258cb36072851fcdbb226c2af6c0ec87e",
+      "viewDigest": "d4bf07e467f1cd394f0c9d14432c8a1258cb36072851fcdbb226c2af6c0ec87e",
+      "equal": true,
+      "declarationOrderMap": "rejected at simulation: HostError: Error(Object, InvalidInput), 'ScMap was not sorted by key for conversion to host object'"
+    },
+    "E2": {
+      "tx": "97b9e4feafecdae4828f7de66b1a25646815334fe0160d1c8b01a7f269215dd5",
+      "ledger": 4644344,
+      "successful": true,
+      "simulationWithSignedEntries": "ok"
+    },
+    "E3": {
+      "tx": "1bbff72b6a390a354af38298a84ca67d42bf5e19f973cb24edd9d242bcbfa210",
+      "ledger": 4644345,
+      "successful": false,
+      "errors": [
+        "Error(Crypto, InvalidInput)",
+        "Error(Auth, InvalidAction)"
+      ],
+      "simulationWithSignedEntries": [
+        "Error(Auth, InvalidAction)",
+        "Error(Crypto, InvalidInput)"
+      ]
+    },
+    "E4": {
+      "tx": "53de1f45f4061da865a3b856757649a10180c60e3ca5a8b0b15f3684ba911022",
+      "ledger": 4644347,
+      "successful": false,
+      "errors": [
+        "Error(Crypto, InvalidInput)",
+        "Error(Auth, InvalidAction)"
+      ],
+      "simulationWithSignedEntries": [
+        "Error(Auth, InvalidAction)",
+        "Error(Crypto, InvalidInput)"
+      ]
+    },
+    "D0_recordingSimulation": {
+      "rawAuthEntries": 1,
+      "addresses": [
+        "CBBUT7CC36RBR4IKEAI6BOX64AJEZ7DYHE3E4WYFC3VBZQ2TDJGLL6OO"
+      ],
+      "authMode": "not passed (RPC default)"
+    },
+    "D1": {
+      "tx": "992999c433894f6c14e729e7a36c13811d9df1a70d97a28bb86650ac8042d07d",
+      "ledger": 4644348,
+      "successful": true,
+      "simulationWithSignedEntries": "ok"
+    },
+    "D2": {
+      "tx": "178c9a2cbfcd555c98ed18e086e92df8cdc3f04a12b0095c63e0018a6b21708f",
+      "ledger": 4644349,
+      "successful": false,
+      "errors": [
+        "Error(Auth, InvalidAction)"
+      ],
+      "simulationWithSignedEntries": [
+        "Error(Auth, InvalidAction)"
+      ]
+    },
+    "D3": {
+      "tx": "6a27377cf168ee79204b112ac2460110e0c9d94980e54d6a0a14db7e6aff939a",
+      "ledger": 4644350,
+      "successful": false,
+      "errors": [
+        "Error(Auth, InvalidAction)"
+      ],
+      "simulationWithSignedEntries": [
+        "Error(Auth, InvalidAction)"
+      ]
+    },
+    "R1": {
+      "version": "0.7.2",
+      "accountA": "CBTLXOWPBBAMRVHLNVCHMELNTTLGUSQOSQAVM5BGDUNNVNEB5OHQGVLB",
+      "accountB": "CD6YEXFHLKHP2WOZI4QWQ35VT726DP7CMCSJHGM5LUHKTVRKXUFGI6KI",
+      "ruleId": 1,
+      "signaturePayloadIdenticalForAandB": true,
+      "setOwnerA": "63c80000a64d8538c972302cc7485e0607660718532aae673ef97cb01aab5d1f",
+      "signedForA": {
+        "tx": "8bbc4be9185ed1e83bd406e7f920d860a05ff17d75fff9e666d574b718717675",
+        "ledger": 4644353,
+        "successful": true,
+        "simulationWithSignedEntries": "ok"
+      },
+      "setOwnerB": "70256357cc97214244261072c765c6264815670d26ddbb450d2cc8ac281a6229",
+      "replayOnB": {
+        "tx": "512dbcbfa209f5fe92d36542500417c1ec9d23d9ad87cbfb375941c7a25b2be4",
+        "ledger": 4644355,
+        "successful": true,
+        "simulationWithSignedEntries": "ok"
+      }
+    },
+    "R2": {
+      "version": "4529d70",
+      "accountA": "CBBUT7CC36RBR4IKEAI6BOX64AJEZ7DYHE3E4WYFC3VBZQ2TDJGLL6OO",
+      "accountB": "CDGEXSWIWKI4TUNB6AYRUBDRULJIUCU4ETI6WSF5MZKL5B23AJCAF7CY",
+      "ruleId": 1,
+      "signaturePayloadIdenticalForAandB": true,
+      "setOwnerA": "23095f57493d4b0c9011a2bb57960575f4b4c4a08312f2a32de2d58aed88b3c9",
+      "signedForA": {
+        "tx": "0cee10936f8445f763d7d8a9196f6c5c63b59ed956f433bef452a2bb27aa5cf2",
+        "ledger": 4644357,
+        "successful": true,
+        "simulationWithSignedEntries": "ok"
+      },
+      "setOwnerB": "09c912fe1e52b43b94d4c54e355784390a3a5431f505cdafbb43de26b8768730",
+      "replayOnB": {
+        "tx": "dbeb6f62c96e00fb684be29ca6d5ea6e01993ef8ca4e9e15210987be427f0cdf",
+        "ledger": 4644359,
+        "successful": false,
+        "errors": [
+          "Error(Crypto, InvalidInput)",
+          "Error(Auth, InvalidAction)"
+        ],
+        "simulationWithSignedEntries": [
+          "Error(Auth, InvalidAction)",
+          "Error(Crypto, InvalidInput)"
+        ]
+      }
+    }
+  }
+}

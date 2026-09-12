@@ -132,3 +132,33 @@ Then check the deployed contracts actually work:
 
 That runs the §4 done-test against the live contracts: each verifier accepts a
 known-good signature fixture and rejects a bad one. It is read-only.
+
+## The 4529d70 deployment, alongside 0.7.2
+
+`deployments/testnet-v09.json` records a second, independent set of the same
+contracts built on `stellar-accounts` commit `4529d70`
+(OpenZeppelin/stellar-contracts#868, `AuthDigestPreimage`), from the
+`contracts/barkeep-v09-*` crates. `deployments/testnet.json` and the 0.7.2
+contracts are untouched: they are the recorded baseline, and the MCP server
+still uses them.
+
+The same file holds the done-tests and the client-flow results on that set,
+plus two throwaway 0.7.2 accounts (deployed from the installed 0.7.2 wasm hash)
+used only for the cross-account replay baseline. Reproduce with, from
+`packages/mcp-server`:
+
+```sh
+ADMIN_SECRET=$(stellar keys secret barkeep-testnet-admin) \
+AGENT_SECRET=$(stellar keys secret barkeep-testnet-agent) \
+SUBMITTER_SECRET=$(stellar keys secret barkeep-testnet-deployer) \
+npx tsx scripts/v09-tab-lifecycle-testnet.mjs     # or v09-client-flow-testnet.mjs
+```
+
+Smart accounts take their admin signer through the constructor:
+
+```sh
+stellar contract deploy --wasm target/wasm32v1-none/release/barkeep_v09_smart_account.wasm \
+  --source barkeep-testnet-deployer --network testnet -- \
+  --admin_signer '{"External":["<v09 ed25519 verifier id>","<admin ed25519 key hex>"]}' \
+  --name barkeep-v09-tab
+```

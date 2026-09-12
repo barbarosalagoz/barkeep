@@ -1,7 +1,8 @@
 # Migration: `stellar-accounts` 0.7.2 → 0.9.0
 
-**Status:** not started, deliberately. We stay on `=0.7.2` until 0.9.0 is
-published to crates.io. This file records what will break so the migration does
+**Status:** not started, deliberately. The product stays on `=0.7.2` until
+0.9.0 is published to crates.io; a parallel `4529d70` deployment exists for
+evidence only (below). This file records what will break so the migration does
 not have to rediscover it. Checked 2026-09-12.
 
 ## Why
@@ -30,6 +31,17 @@ Where the fix is, as of 2026-09-12:
 The migration guide #868 adds to `packages/accounts/README.md` is headed
 "from v0.7.x to 0.8.0", but the change landed only on the `v0.9.0` branch. Go by
 whichever *published* release actually contains `4529d70`, not by the heading.
+
+## Deployed alongside, 2026-09-12
+
+The contract side has been built and run on Testnet without migrating
+anything: `contracts/barkeep-v09-*` pin `4529d70` by git rev next to the `=0.7.2`
+crates, `packages/mcp-server/src/authDigestPreimage.ts` sits next to
+`authDigest.ts`, and `deployments/testnet-v09.json` records the deployment,
+the three done-tests and the client-flow cases. The TypeScript sketch below
+matched the contract's own `auth_digest` view byte-for-byte on chain. What
+remains of the migration is switching the MCP server and the product account
+over, which is still waiting for a published 0.9.0.
 
 ## The new preimage
 
@@ -68,8 +80,9 @@ const preimage = xdr.ScVal.scvMap([
 const digest = hash(preimage.toXDR()); // what an External signer signs
 ```
 
-This is a sketch written from #868's README and its `auth_digest_matches_off_chain_encoding`
-test, not code that has run. The reference client construction is
+Written first as a sketch from #868's README; `src/authDigestPreimage.ts` is the
+same encoding, checked against contract-emitted vectors and the deployed view.
+The reference client construction is
 `packages/accounts/src/smart_account/test/auth_entries.rs` on the `v0.9.0` branch.
 
 ## What breaks
