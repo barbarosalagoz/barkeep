@@ -1,0 +1,273 @@
+<!--
+  Barkeep — passkey registration (MANUAL STEP)
+
+  What this is: a local, one-off tool to create a passkey and read back the two
+  PUBLIC values Barkeep needs to register it as the human signer on a smart
+  account — the 65-byte uncompressed secp256r1 public key, and the credential id.
+
+  Why it is a manual step and not a script: creating a passkey is
+  navigator.credentials.create(), a browser API backed by an authenticator
+  (Touch ID, Windows Hello, a security key). There is no Node equivalent, and
+  neither the Stellar CLI nor any package offers one. See
+  docs/ARCHITECTURE-v2.md §13 for the CI alternative (a virtual authenticator),
+  which is noted and not built.
+
+  How to serve it — file:// does NOT work, the origin is null and WebAuthn
+  refuses it. http://localhost is a secure context and does:
+
+      python3 -m http.server 8000 --directory scripts
+      open http://localhost:8000/passkey-register.html
+
+  Nothing secret is displayed, and nothing is sent anywhere. The private key is
+  generated inside the authenticator and never leaves it — not to this page, not
+  to Barkeep, not to anyone. This page has no network calls at all.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Barkeep — Register a passkey</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf8; --fg: #1a1a19; --muted: #6b6a66;
+    --line: #e2e0dc; --card: #ffffff;
+    --accent: #7a4b2a; --ok: #2f6b3f; --bad: #9a2f2f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171614; --fg: #ece9e4; --muted: #9a968e;
+      --line: #32302c; --card: #1f1e1b;
+      --accent: #d9a273; --ok: #7fc08f; --bad: #e08585;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding-block: 2.5rem; padding-inline: 1rem;
+    background: var(--bg); color: var(--fg);
+    font: 15px/1.6 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  }
+  main { max-width: 44rem; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 2rem; }
+  section {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem;
+  }
+  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .07em;
+       color: var(--muted); margin: 0 0 .75rem; font-weight: 600; }
+  button {
+    font: inherit; font-weight: 550; cursor: pointer;
+    background: var(--accent); color: var(--bg);
+    border: 0; border-radius: 7px; padding: .6rem 1.1rem;
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+  .field { margin-top: 1rem; }
+  .field label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .3rem; }
+  .row { display: flex; gap: .5rem; align-items: flex-start; }
+  code, output, .hex {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+  }
+  .hex {
+    flex: 1; min-width: 0; word-break: break-all; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 7px; padding: .6rem .7rem;
+  }
+  .note { color: var(--muted); font-size: .875rem; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); }
+  ul { padding-left: 1.1rem; margin: .5rem 0; }
+  [hidden] { display: none !important; }
+  .flags { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin-top: .5rem; }
+</style>
+
+<main>
+  <h1>Register a passkey</h1>
+  <p class="sub">Manual step. Produces two public values to paste back — nothing secret.</p>
+
+  <section>
+    <h2>1 · Create</h2>
+    <p class="note">
+      Forces <code>alg: -7</code> (ES256 / secp256r1) — the only curve the
+      on-chain verifier supports — and requires user verification, because the
+      contract rejects an assertion whose User Verified flag is unset.
+    </p>
+    <p style="margin-top:1rem"><button id="create">Create passkey</button></p>
+    <p id="createErr" class="bad note" hidden></p>
+  </section>
+
+  <section id="out" hidden>
+    <h2>2 · Paste these back</h2>
+
+    <div class="field">
+      <label>Public key — 65 bytes, uncompressed secp256r1 (starts <code>04</code>)</label>
+      <div class="row">
+        <div class="hex" id="pub"></div>
+        <button class="secondary" data-copy="pub">Copy</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Credential id</label>
+      <div class="row">
+        <div class="hex" id="cid"></div>
+        <button class="secondary" data-copy="cid">Copy</button>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:1.25rem">
+      Both are public. The private key stayed in the authenticator; this page
+      never saw it and makes no network requests.
+    </p>
+  </section>
+
+  <section id="testCard" hidden>
+    <h2>3 · Check it signs (recommended)</h2>
+    <p class="note">
+      Produces one assertion and reads the authenticator flags. Worth doing now:
+      if User Verified comes back unset, the contract would refuse every
+      transaction from this passkey, and it is better to find that here.
+    </p>
+    <p style="margin-top:1rem"><button id="test" class="secondary">Test an assertion</button></p>
+    <div id="testOut" hidden>
+      <div class="flags" id="flags"></div>
+      <p id="verdict" class="note"></p>
+    </div>
+    <p id="testErr" class="bad note" hidden></p>
+  </section>
+
+  <section>
+    <h2>Notes</h2>
+    <ul class="note">
+      <li>A passkey is bound to the origin it was created on, so this one belongs
+        to <code id="origin"></code>. It still works on chain because the
+        verifier deliberately skips origin and rpIdHash validation — see
+        <code>docs/ARCHITECTURE-v2.md</code> §4. Re-register per origin once that
+        gap is closed.</li>
+      <li>Testnet only.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const rand = (n) => crypto.getRandomValues(new Uint8Array(n));
+
+  $("origin").textContent = location.origin;
+
+  let credentialId = null;
+
+  /*
+   * getPublicKey() returns SPKI DER. Re-importing it and exporting "raw" gives
+   * exactly the 65-byte uncompressed point (0x04 || X || Y) the contract wants,
+   * which is safer than slicing bytes off the DER by hand.
+   */
+  async function uncompressedPoint(spki) {
+    const key = await crypto.subtle.importKey(
+      "spki", spki, { name: "ECDSA", namedCurve: "P-256" }, true, ["verify"]
+    );
+    const raw = new Uint8Array(await crypto.subtle.exportKey("raw", key));
+
+    if (raw.length !== 65 || raw[0] !== 0x04) {
+      throw new Error(`expected a 65-byte uncompressed point, got ${raw.length} bytes`);
+    }
+    return raw;
+  }
+
+  $("create").onclick = async () => {
+    $("createErr").hidden = true;
+    $("create").disabled = true;
+
+    try {
+      const cred = await navigator.credentials.create({
+        publicKey: {
+          challenge: rand(32),
+          rp: { name: "Barkeep" },               // id defaults to this origin
+          user: { id: rand(16), name: "barkeep-human", displayName: "Barkeep human signer" },
+          pubKeyCredParams: [{ type: "public-key", alg: -7 }],   // ES256 only
+          authenticatorSelection: { userVerification: "required", residentKey: "preferred" },
+          timeout: 120000,
+          attestation: "none",
+        },
+      });
+
+      const spki = cred.response.getPublicKey?.();
+      if (!spki) {
+        throw new Error(
+          "This browser did not return a public key (response.getPublicKey). " +
+          "Use a current Chrome, Safari or Firefox."
+        );
+      }
+
+      credentialId = new Uint8Array(cred.rawId);
+      $("pub").textContent = hex(await uncompressedPoint(spki));
+      $("cid").textContent = hex(credentialId);
+      $("out").hidden = false;
+      $("testCard").hidden = false;
+    } catch (err) {
+      $("createErr").textContent = String(err?.message ?? err);
+      $("createErr").hidden = false;
+    } finally {
+      $("create").disabled = false;
+    }
+  };
+
+  $("test").onclick = async () => {
+    $("testErr").hidden = true;
+    $("test").disabled = true;
+
+    try {
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge: rand(32),
+          allowCredentials: [{ type: "public-key", id: credentialId }],
+          userVerification: "required",
+          timeout: 120000,
+        },
+      });
+
+      // authenticatorData: 32-byte rpIdHash, then the flags byte.
+      const flags = new Uint8Array(assertion.response.authenticatorData)[32];
+      const bits = {
+        "User Present": [flags & 0x01, true],
+        "User Verified": [flags & 0x04, true],
+        "Backup Eligible": [flags & 0x08, null],
+        "Backup State": [flags & 0x10, null],
+      };
+
+      $("flags").innerHTML = Object.entries(bits)
+        .map(([name, [set]]) => `<span>${set ? "✓" : "✗"} ${name}</span>`)
+        .join("");
+
+      const required = (flags & 0x01) && (flags & 0x04);
+      const backupOk = !(flags & 0x10) || (flags & 0x08);
+      const verdict = $("verdict");
+
+      if (required && backupOk) {
+        verdict.className = "note ok";
+        verdict.textContent = "Good — the contract accepts this shape. Paste the two values back.";
+      } else if (!required) {
+        verdict.className = "note bad";
+        verdict.textContent =
+          "User Present and User Verified must both be set; the contract rejects this (3116 / 3117).";
+      } else {
+        verdict.className = "note bad";
+        verdict.textContent =
+          "Backup State is set without Backup Eligible; the contract rejects this (3118).";
+      }
+      $("testOut").hidden = false;
+    } catch (err) {
+      $("testErr").textContent = String(err?.message ?? err);
+      $("testErr").hidden = false;
+    } finally {
+      $("test").disabled = false;
+    }
+  };
+
+  for (const btn of document.querySelectorAll("[data-copy]")) {
+    btn.onclick = async () => {
+      await navigator.clipboard.writeText($(btn.dataset.copy).textContent);
+      const was = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(() => (btn.textContent = was), 1200);
+    };
+  }
+</script>

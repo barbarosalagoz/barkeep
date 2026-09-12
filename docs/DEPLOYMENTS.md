@@ -54,6 +54,42 @@ stellar keys generate barkeep-testnet-deployer --network testnet --fund
 It is a throwaway Testnet account funded by Friendbot. If it is lost, generate
 another and redeploy; nothing of value is held by it.
 
+## Registering the human signer's passkey (manual)
+
+Creating a passkey is `navigator.credentials.create()` — a browser API backed by
+an authenticator. There is no Node equivalent, and neither the Stellar CLI nor
+any installed package offers one, so this step is done by hand.
+
+`scripts/passkey-register.html` is a local page for it. `file://` does not work:
+the origin is `null` and WebAuthn refuses it. `http://localhost` is a secure
+context and does.
+
+```sh
+python3 -m http.server 8000 --directory scripts
+open http://localhost:8000/passkey-register.html
+```
+
+Click **Create passkey**, approve with Touch ID / Windows Hello / a security
+key, then **Test an assertion**. The page prints two public values — the
+65-byte uncompressed secp256r1 public key and the credential id — and nothing
+else. The private key is generated inside the authenticator and never leaves
+it; the page makes no network requests.
+
+The page forces `alg: -7` (ES256), the only curve the verifier supports, and
+requires user verification, because the contract rejects an assertion with the
+User Verified flag unset (3117). The assertion test is worth running: it is
+better to discover an authenticator that will not set UV here than at signing
+time.
+
+Registering the key on the account is then `add_signer` with
+`Signer::External(<webauthn verifier>, <public key>)` — not a redeploy. The
+smart account currently carries an Ed25519 human signer as a stand-in.
+
+A passkey is bound to the origin it was created on, so one made at
+`localhost:8000` belongs to `localhost`. It still works on chain because the
+verifier deliberately skips origin and rpIdHash validation
+(`docs/ARCHITECTURE-v2.md` §4). Re-register per origin once that gap closes.
+
 ## Reproducing a deployment
 
 ```sh
