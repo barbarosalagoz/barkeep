@@ -35,6 +35,49 @@
       "wasmHash": "2f2daf8ad99b63a6ea56ccf8ab442264e612236e62e5df82201f562fcd0c38dc",
       "deployTx": "17949daa166f1dcd11c8a62352ff8cf633b7bb53a9d73b5d43730aac996ea978",
       "audited": false
+    },
+    "policySpendingLimit": {
+      "id": "CBEILTNYZEE5KX6WTSRON3FCXE7KBYAAUVUWY7TWEUBIEHIY47NVPWBZ",
+      "crate": "contracts/barkeep-policy",
+      "wasmHash": "528614e96e1ee27c0688894f7f868f4f1d05a4b3484144460b78fff8b7d81f61",
+      "deployTx": "b6429435bb459726bdb35312834d016d328d19e85836a7706345de665dbf7dbe",
+      "audited": false
+    },
+    "smartAccount": {
+      "id": "CCAO6UVMZ2JGUAGIQKMVHXKWKD7TZKW2YP77M2NK56MWL6LC66ZZ3FLH",
+      "crate": "contracts/barkeep-smart-account",
+      "wasmHash": "fde9a23e170d3c3054ffe591ff6839ec836da105c3addf9d7e6a56d4f5465ebd",
+      "deployTx": "9972d1cf6c86421f6dbe6735cad0121050ebd18ca4a76f5c9ed368e18b02934a",
+      "adminSigner": "GAPL4FFWCJ7TLUYU6USLKLXEFR7QIFVQ3XCEVTKO5MNDBO4IQYV5NK44",
+      "adminSignerNote": "Ed25519 human signer, standing in until a real passkey is registered (needs a browser; see ARCHITECTURE-v2 4.1 and 13).",
+      "audited": false
+    },
+    "token": {
+      "id": "CBXLQ3TCM6EB6KXBYDQVZ3NJO2SAL5FY5BZPMTLGQPROANSSP7RFHP3V",
+      "note": "Stellar Asset Contract for TAB:<deployer>, a throwaway Testnet test asset used by the tab done-test.",
+      "audited": null
+    }
+  },
+  "agentSigner": "GDUQYLCSWA3CTGCK7XHAW622QRX54Q3FZQWOYUICUNLZZQOHCOXQD5TS",
+  "doneTests": {
+    "script": "packages/mcp-server/scripts/tab-lifecycle-testnet.mjs",
+    "note": "Each run installs a fresh agent rule with a short expiry, so rule ids and tx hashes differ per run. The hashes below are from the run recorded in the commit message.",
+    "underCap": {
+      "tx": "15333d0af7b85b0e1097f9ef70e59702f522199e597af154940150d1f07420da",
+      "ledger": 4643489,
+      "successful": true
+    },
+    "overCap": {
+      "tx": "6f001e4a2266bedf8b016e4fde5a978cc4ae06a5f22a79545fe67d7b51ca0f47",
+      "ledger": 4643490,
+      "successful": false,
+      "error": "Error(Contract, #3221) SpendingLimitExceeded"
+    },
+    "afterExpiry": {
+      "tx": "b253a6f86e311cc5704d83b7a507bc099d688513f398547614fb9cc40295be46",
+      "ledger": 4643500,
+      "successful": false,
+      "error": "Error(Contract, #3002) UnvalidatedContext"
     }
   }
 }

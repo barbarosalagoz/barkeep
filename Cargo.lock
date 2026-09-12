@@ -195,6 +195,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "barkeep-smart-account"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk 26.1.0",
+ "stellar-accounts",
+]
+
+[[package]]
 name = "barkeep-verifier-ed25519"
 version = "0.1.0"
 dependencies = [

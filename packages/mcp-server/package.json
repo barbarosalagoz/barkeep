@@ -5,6 +5,10 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run"
+  },
   "dependencies": {
     "@barkeep/core": "*",
     "@modelcontextprotocol/sdk": "^1.12.1",
