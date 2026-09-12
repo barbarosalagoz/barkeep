@@ -1,8 +1,23 @@
-# PromptRail
+# Barkeep
 
-**Machine Payments on Stellar**
+**Open a tab for your AI agent.**
 
-PromptRail is a Stellar Testnet dApp built for the **Stellar Journey to Mastery — Yellow Belt Challenge**.
+Barkeep is a Stellar dApp for machine payments. A human opens a tab with a
+spending cap and a time window, an agent spends against it to pay for HTTP
+requests, and every payment lands on an itemised bill.
+
+Home: **[barkeep.dev](https://barkeep.dev)**
+
+> **What ships today.** This repository currently holds the first technical
+> foundation of that idea: a deployed Soroban **Payment Tracker** escrow
+> contract and a multi-wallet React dApp that drives it end to end on Stellar
+> Testnet. The tab-and-agent model described above is the v1 design, specified
+> in [docs/ARCHITECTURE-v2.md](docs/ARCHITECTURE-v2.md); it is a plan, not yet
+> built. Everything documented below is what is live now.
+>
+> The project was previously named **PromptRail**. Its Stellar Journey to
+> Mastery — Yellow Belt submission record is preserved under the old name in
+> [docs/YELLOW_BELT.md](docs/YELLOW_BELT.md).
 
 It pairs a **deployed Soroban smart contract** with a React frontend that drives it end to end.
 
@@ -29,19 +44,24 @@ The off-chain half is a **multi-wallet dApp** built on
 * Submitting the signed transaction to Stellar Testnet
 * Displaying transaction success, failure, and transaction hash information
 
-PromptRail is designed as the first technical foundation for a broader vision: enabling programmable and machine-to-machine payments for APIs and AI agents using Stellar.
+This contract and dApp are the first technical foundation for Barkeep's broader goal: programmable, machine-to-machine payments for APIs and AI agents on Stellar.
 
 ---
 
 ## Live Demo
 
-[Deployment link is here.](https://promptrail-ten.vercel.app/)
+Home: **[barkeep.dev](https://barkeep.dev)**
+
+The current build is deployed at
+[https://promptrail-ten.vercel.app/](https://promptrail-ten.vercel.app/). That
+deployment URL is unchanged from the PromptRail era and stays live, because the
+Yellow Belt submission links to it.
 
 ---
 
 ### Deployment Status
 
-PromptRail is deployed publicly on Vercel and has been tested end-to-end on Stellar Testnet.
+Barkeep is deployed publicly on Vercel and has been tested end-to-end on Stellar Testnet.
 
 Verified production flow:
 
@@ -58,7 +78,7 @@ Verified production flow:
 
 ## Smart Contract (Soroban)
 
-PromptRail's settlement layer is a Soroban contract that escrows XLM while a
+Barkeep's settlement layer is a Soroban contract that escrows XLM while a
 payment is in flight and tracks its status on-chain.
 
 ### Deployment
@@ -301,7 +321,7 @@ stellar contract invoke --id <CONTRACT_ID> --source deployer --network testnet -
 
 ## TRY on/off-ramp via SEP
 
-PromptRail can move between **Turkish Lira and USDC** through a Stellar
+Barkeep can move between **Turkish Lira and USDC** through a Stellar
 anchor using only the portable SEP path — the standard interface every real
 anchor exposes. No partner API key, no anchor-specific endpoints. The whole
 hand-off is two config values (a **home domain** and an **asset code**);
@@ -420,7 +440,7 @@ Observed while integrating (not yet reported; candidates to send to the anchor's
 
 ## Multi-Wallet Support
 
-PromptRail connects through
+Barkeep connects through
 [StellarWalletsKit](https://stellarwalletskit.dev/), so the user picks their
 wallet in a selection modal instead of being locked to one extension:
 
@@ -490,47 +510,6 @@ and `fetchContractEvents` in
 
 ---
 
-## Yellow Belt Requirements
-
-| Requirement                          | Status |
-| ------------------------------------ | ------ |
-| Soroban smart contract source         | ✅      |
-| Cargo workspace at repository root    | ✅      |
-| Contract unit tests (13 passing)      | ✅      |
-| Contract deployed to Stellar Testnet  | ✅      |
-| Contract ID documented in README      | ✅      |
-| Contract invoked on-chain (tx hash below) | ✅  |
-| Frontend calls the deployed contract  | ✅      |
-| Multi-wallet via StellarWalletsKit    | ✅      |
-| Wallet options screenshot             | ✅      |
-| Wallet not found — distinct error     | ✅      |
-| User rejected — distinct error        | ✅      |
-| Insufficient balance — distinct error | ✅      |
-| Real-time status + contract events    | ✅      |
-
-Carried forward from the White Belt stage:
-
-| Requirement                        | Status |
-| ---------------------------------- | ------ |
-| Wallet setup (now multi-wallet)    | ✅      |
-| Stellar Testnet support            | ✅      |
-| Wallet connect                     | ✅      |
-| Wallet disconnect                  | ✅      |
-| Fetch XLM balance                  | ✅      |
-| Display XLM balance                | ✅      |
-| Send XLM on Testnet                | ✅      |
-| Transaction signing in the wallet  | ✅      |
-| Success feedback                   | ✅      |
-| Failure feedback                   | ✅      |
-| Transaction hash display           | ✅      |
-| Stellar explorer link              | ✅      |
-| Error handling                     | ✅      |
-| Public GitHub repository           | ✅      |
-| 10+ meaningful commits             | ✅      |
-| Public deployment                  | ✅      |
-
----
-
 ## Screenshots
 
 ### Wallet Connected
@@ -543,7 +522,7 @@ The application connects the selected wallet and displays the connected Stellar 
 
 ### XLM Balance
 
-PromptRail fetches the connected wallet's native XLM balance directly from Stellar Testnet through Horizon.
+Barkeep fetches the connected wallet's native XLM balance directly from Stellar Testnet through Horizon.
 
 ![XLM Balance](docs/screenshots/balance-testnet.png)
 
@@ -561,7 +540,7 @@ The interface displays the transaction hash and provides a direct link to the tr
 
 ### Transaction Error Handling
 
-PromptRail validates transaction inputs and provides clear failure feedback when a payment cannot be completed.
+Barkeep validates transaction inputs and provides clear failure feedback when a payment cannot be completed.
 
 ![Transaction Error](docs/screenshots/payment-error.png)
 
@@ -573,7 +552,7 @@ PromptRail validates transaction inputs and provides clear failure feedback when
 User
   │
   ▼
-PromptRail
+Barkeep
   │
   ├── Connect wallet (kit modal)
   │
@@ -621,9 +600,9 @@ Transaction Hash + Updated Balance
 
 ### Multi-Wallet Integration (StellarWalletsKit)
 
-PromptRail opens a wallet-selection modal (Freighter, Albedo), shows which wallets are detected in the browser, and requests access to the user's Stellar public address.
+Barkeep opens a wallet-selection modal (Freighter, Albedo), shows which wallets are detected in the browser, and requests access to the user's Stellar public address.
 
-Private keys are never exposed to PromptRail.
+Private keys are never exposed to Barkeep.
 
 ---
 
@@ -637,13 +616,13 @@ Transactions are only allowed when the wallet is connected to:
 Stellar Testnet
 ```
 
-If the wallet is connected to the public Stellar network instead, PromptRail displays a warning and prevents Testnet transaction activity.
+If the wallet is connected to the public Stellar network instead, Barkeep displays a warning and prevents Testnet transaction activity.
 
 ---
 
 ### XLM Balance
 
-PromptRail loads the connected Stellar account through Horizon and displays its native XLM balance.
+Barkeep loads the connected Stellar account through Horizon and displays its native XLM balance.
 
 The balance can also be manually refreshed from the interface.
 
@@ -656,7 +635,7 @@ Users can enter:
 * A Stellar recipient address
 * An XLM amount
 
-PromptRail then:
+Barkeep then:
 
 1. Validates the destination address
 2. Validates the amount
@@ -747,8 +726,8 @@ For contract development additionally install Rust and the Stellar CLI — see
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/barbarosalagoz/promptrail.git
-cd promptrail
+git clone https://github.com/barbarosalagoz/barkeep.git
+cd barkeep
 ```
 
 ---
@@ -793,7 +772,7 @@ The static site is emitted to `dist/`. `npm run lint` runs the ESLint suite,
 
 ---
 
-## Using PromptRail
+## Using Barkeep
 
 ### 1. Connect a Wallet
 
@@ -809,7 +788,7 @@ Pick a wallet in the selection modal (Freighter or Albedo) and approve the conne
 
 ### 2. Switch to Testnet
 
-PromptRail verifies the active Stellar network.
+Barkeep verifies the active Stellar network.
 
 The application should display:
 
@@ -832,7 +811,7 @@ Testnet XLM has no monetary value.
 
 ### 4. Check Your Balance
 
-After the Testnet account is funded, PromptRail retrieves and displays the current XLM balance.
+After the Testnet account is funded, Barkeep retrieves and displays the current XLM balance.
 
 ---
 
@@ -859,7 +838,7 @@ Review the transaction and approve the signature.
 
 ### 6. Transaction Confirmation
 
-After Horizon accepts the transaction, PromptRail displays:
+After Horizon accepts the transaction, Barkeep displays:
 
 ```text
 ✓ Payment successful
@@ -876,7 +855,7 @@ The wallet balance is refreshed automatically after confirmation.
 
 ## Security
 
-PromptRail never requests, stores, or handles a user's private key.
+Barkeep never requests, stores, or handles a user's private key.
 
 Transaction signing occurs inside the connected wallet.
 
@@ -893,7 +872,7 @@ This project currently operates exclusively on **Stellar Testnet**.
 ## Project Structure
 
 ```text
-promptrail/
+barkeep/
 │
 ├── Cargo.toml                     # Soroban workspace root
 ├── Cargo.lock
@@ -939,67 +918,9 @@ promptrail/
 
 ---
 
-## Development Progress
-
-PromptRail was developed incrementally with meaningful Git commits covering:
-
-1. Project initialization
-2. Base dashboard interface
-3. Freighter wallet integration
-4. Stellar Testnet network validation
-5. XLM balance handling
-6. Signed XLM Testnet payments
-7. Transaction screenshots and testing
-8. Project documentation
-9. Deployment preparation
-10. Soroban workspace scaffolding
-11. Payment Tracker contract implementation
-12. Contract unit tests
-13. Testnet deployment and on-chain verification
-14. Frontend integration with the deployed contract
-15. Centralized error taxonomy
-16. StellarWalletsKit multi-wallet integration
-17. Wallet-kit signing for contract calls and balance pre-checks
-18. Real-time status polling and contract event feed
-19. Wallet options screenshot and README updates
-
----
-
-## Yellow Belt Learning Outcomes
-
-This project demonstrates practical understanding of:
-
-* Writing Soroban smart contracts in Rust
-* Contract storage, TTL management, and data keys
-* Contract errors and state-machine guards
-* Typed contract events
-* Cross-contract calls into the Stellar Asset Contract
-* Escrow and authorization (`require_auth`)
-* Contract unit testing with the Soroban test environment
-* Building, deploying, and invoking a contract on Testnet
-* Calling a deployed contract from a React frontend
-* Multi-wallet integration with StellarWalletsKit
-* Consuming contract events through Soroban RPC in near-real-time
-* Typed, user-facing error taxonomies for Web3 failures
-* Stellar account architecture
-* Stellar public addresses
-* Testnet development
-* Horizon account queries
-* XLM balances
-* Stellar transactions
-* Payment operations
-* XDR serialization
-* Wallet-based transaction signing
-* Transaction submission
-* Transaction hashes
-* Blockchain explorer verification
-* User-facing Web3 error handling
-
----
-
 ## Future Vision
 
-With the Payment Tracker contract live on Testnet, PromptRail now has both
+With the Payment Tracker contract live on Testnet, Barkeep now has both
 halves of a machine-payment system: an on-chain settlement layer and a wallet
 frontend that drives it.
 
@@ -1020,21 +941,9 @@ The long-term idea is simple:
 
 ---
 
-## Challenge
-
-Built for:
-
-**Stellar Journey to Mastery — Yellow Belt**
-
-Network:
-
-**Stellar Testnet**
-
----
-
 ## License
 
-The PromptRail source code in this repository is licensed under the
+The Barkeep source code in this repository is licensed under the
 [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE).
 
 Copyright 2026 Barbaros Emre Alagöz

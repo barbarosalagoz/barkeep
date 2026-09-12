@@ -3,6 +3,11 @@
 **Status:** plan only. This document changes no code. The rename from PromptRail
 to Barkeep is Phase B and is not started here.
 
+**Update 2026-09-12:** Phase B is complete. The rename to Barkeep has landed —
+package identity, UI copy, meta tags and docs. The two sentences above are kept
+as written, because they were true when this plan was drafted. The v1 design
+below is still a plan and remains unbuilt.
+
 **Date:** 2026-09-12. Written against HEAD `f260482`.
 
 Barkeep is a tab for AI agents on Stellar. A human opens a tab with a spending

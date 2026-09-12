@@ -43,7 +43,7 @@ const callEntry = (imports: Array<{ name: string; from: string }>) =>
   `\nconsole.log(${imports.map(({ name }) => `${name}(Date.now())`).join(", ")});\n`;
 
 function fixture(packages: Record<string, FixturePackage>, entry: string): string {
-  const root = mkdtempSync(join(tmpdir(), "promptrail-license-fixture-"));
+  const root = mkdtempSync(join(tmpdir(), "barkeep-license-fixture-"));
   created.push(root);
 
   writeFileSync(

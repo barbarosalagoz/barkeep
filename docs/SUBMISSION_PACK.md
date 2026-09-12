@@ -8,6 +8,11 @@ challenge submissions (Rise In). One section per belt.
 > AGPL-3.0). The app now offers Freighter and Albedo, and the paste-ready
 > submission text below says so. The dated verification records below still
 > describe the app as it was verified on 2026-09-01.
+>
+> **Update 2026-09-12 (rename):** the project is now **Barkeep**
+> (barkeep.dev). Everything below is left exactly as written and records what
+> Rise In received under the old **PromptRail** name, including the deployment
+> URL, which is unchanged and still live.
 
 ---
 

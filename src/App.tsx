@@ -249,7 +249,7 @@ function App() {
   };
 
   /*
-   * Disconnect from PromptRail UI
+   * Disconnect from Barkeep UI
    */
   const disconnectWallet = () => {
     void kitDisconnect();
@@ -287,7 +287,7 @@ function App() {
         setConnectionError(
           new AppError(
             "WRONG_NETWORK",
-            `PromptRail requires Stellar Testnet. Your wallet is currently on ${activeNetwork}.`,
+            `Barkeep requires Stellar Testnet. Your wallet is currently on ${activeNetwork}.`,
             "Switch the wallet to Testnet, then press Recheck Network."
           )
         );
@@ -477,6 +477,13 @@ function App() {
                 ),
             })
           )
+          /*
+           * Historical on-chain marker: kept deliberately.
+           * The project is now Barkeep, but this memo string is what the
+           * Yellow Belt submission transactions already carry on Stellar
+           * Testnet, immutably. Changing it would make new payments
+           * inconsistent with that record for no gain.
+           */
           .addMemo(
             Memo.text(
               "PromptRail Yellow Belt"
@@ -570,7 +577,7 @@ function App() {
           </div>
 
           <div>
-            <h1>PromptRail</h1>
+            <h1>Barkeep</h1>
 
             <span>
               Machine Payments on Stellar
@@ -630,7 +637,7 @@ function App() {
             <p>
               Your Stellar wallet
               is connected to
-              PromptRail.
+              Barkeep.
             </p>
 
             <div className="connected-status">
@@ -1057,7 +1064,7 @@ function App() {
 
       <footer>
         Built on Stellar ·
-        PromptRail Launchpad ·{" "}
+        Barkeep ·{" "}
         <a
           href={`${import.meta.env.BASE_URL}third-party-licenses.txt`}
         >

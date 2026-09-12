@@ -20,7 +20,7 @@ import {
 import { AppError, classifyError, walletNotFound } from "../errors";
 
 /*
- * The network PromptRail runs on comes from src/config/stellar.ts, so the
+ * The network Barkeep runs on comes from src/config/stellar.ts, so the
  * wallet gate follows the same VITE_STELLAR_NETWORK switch as the anchor.
  */
 const REQUIRED_PASSPHRASE: string = NETWORK_PASSPHRASE;
@@ -107,7 +107,7 @@ export async function connectWallet(): Promise<ConnectedWallet> {
 
       throw new AppError(
         "WRONG_NETWORK",
-        `PromptRail requires ${NETWORK_LABEL}, but the wallet is on ${
+        `Barkeep requires ${NETWORK_LABEL}, but the wallet is on ${
           network || "another network"
         }.`,
         `Switch the wallet to ${REQUIRED_NETWORK_NAME} and connect again.`

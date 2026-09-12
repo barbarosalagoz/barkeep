@@ -2,7 +2,7 @@
  * Network and anchor configuration.
  *
  * Everything that differs between Testnet and Mainnet lives here and is read
- * from Vite env vars (VITE_*) with Testnet defaults. Moving PromptRail to a
+ * from Vite env vars (VITE_*) with Testnet defaults. Moving Barkeep to a
  * production anchor is therefore a config change only:
  *
  *   VITE_STELLAR_NETWORK=public

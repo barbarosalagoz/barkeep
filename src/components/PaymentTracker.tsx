@@ -645,7 +645,7 @@ function PaymentTracker({ walletAddress, xlmBalance }: PaymentTrackerProps) {
       )}
 
       <span className="card-note">
-        Escrowed funds are held by the contract, not by PromptRail.
+        Escrowed funds are held by the contract, not by Barkeep.
       </span>
     </section>
   );

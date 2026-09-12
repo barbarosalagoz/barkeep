@@ -1,5 +1,5 @@
 /*
- * Typed client for the deployed PromptRail Payment Tracker contract.
+ * Typed client for the deployed Payment Tracker contract.
  *
  * Reads go through Soroban RPC simulation (no signing, no fees). Writes are
  * prepared against RPC, signed by Freighter, submitted, and then polled to

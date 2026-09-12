@@ -482,17 +482,17 @@ export function renderNotices(
   });
 
   const header = [
-    "PromptRail third-party notices",
+    "Barkeep third-party notices",
     "",
     "Every third-party npm package whose code is bundled into this build of the",
-    "PromptRail web app, with its license text and copyright notices, followed",
+    "Barkeep web app, with its license text and copyright notices, followed",
     "by the build tools whose runtime helpers are injected into the bundle.",
     "Generated at build time by rollup-plugin-license (MIT) from the modules in",
     "the shipped JavaScript chunks. Copyright headers found in the bundled",
     "source files are listed per package as well, since packages may vendor",
     "third-party code that their own LICENSE file does not mention.",
-    "PromptRail's own code is licensed under Apache-2.0; see LICENSE and NOTICE",
-    "in https://github.com/barbarosalagoz/promptrail.",
+    "Barkeep's own code is licensed under Apache-2.0; see LICENSE and NOTICE",
+    "in https://github.com/barbarosalagoz/barkeep.",
     "",
     `Bundled packages: ${entries.length}`,
     "",
@@ -574,7 +574,7 @@ export function thirdPartyLicenses(options: ThirdPartyLicensesOptions = {}): Plu
       },
     } as Plugin,
     {
-      name: "promptrail:third-party-licenses",
+      name: "barkeep:third-party-licenses",
       apply: "build",
       generateBundle() {
         if (collected === null) {
@@ -614,7 +614,7 @@ export function thirdPartyLicenses(options: ThirdPartyLicensesOptions = {}): Plu
       },
     },
     {
-      name: "promptrail:third-party-licenses-dev",
+      name: "barkeep:third-party-licenses-dev",
       apply: "serve",
       configureServer(server) {
         server.middlewares.use(`${server.config.base}${THIRD_PARTY_LICENSES_FILE}`, (_request, response) => {

@@ -1,5 +1,5 @@
 /*
- * Centralized error taxonomy for PromptRail.
+ * Centralized error taxonomy for Barkeep.
  *
  * Every failure the app surfaces to the user flows through this module, so
  * each named case has exactly one message and the UI can style them

@@ -1,7 +1,7 @@
 /*
  * TRY on/off-ramp via the portable SEP path (SEP-1, SEP-10, SEP-6, SEP-38).
  *
- * This module composes the per-SEP clients into the two flows PromptRail
+ * This module composes the per-SEP clients into the two flows Barkeep
  * needs:
  *
  *   beginDeposit  -> TRY in (bank transfer)  -> USDC credited to the user
