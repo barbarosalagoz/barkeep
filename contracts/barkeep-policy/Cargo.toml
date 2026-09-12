@@ -1,0 +1,32 @@
+[package]
+name = "barkeep-policy"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Barkeep policy contracts for OpenZeppelin smart accounts on Soroban"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+# Pinned to the exact version the audited OpenZeppelin crate needs, NOT to the
+# workspace's soroban-sdk. stellar-accounts 0.7.2 requires soroban-sdk ^26.1.0,
+# so it cannot build against the 27.0.6 that contracts/payment-tracker uses.
+#
+# The requirement is "=" rather than the caret Cargo would infer from a bare
+# "26.1.0": we want the version the audit report covers, not whatever patch the
+# range drifts to. That choice also fixes the environment, because soroban-sdk
+# pins soroban-env itself with exact requirements -- 26.1.0 means
+# soroban-env-guest and soroban-env-host = 26.1.3, and 26.1.1 would mean 26.1.4.
+# There is nothing to pin by hand here; adding soroban-env entries could only
+# conflict with soroban-sdk's own.
+#
+# Cargo keeps both majors in one Cargo.lock, so payment-tracker stays on 27.0.6
+# and is not touched. See docs/ARCHITECTURE-v2.md §3.3, §4 and §10 risk 3.
+[dependencies]
+soroban-sdk = "=26.1.0"
+stellar-accounts = "=0.7.2"
+
+[dev-dependencies]
+soroban-sdk = { version = "=26.1.0", features = ["testutils"] }
