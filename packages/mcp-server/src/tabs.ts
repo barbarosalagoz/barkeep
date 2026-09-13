@@ -8,7 +8,7 @@
  * and tabStatus deliberately re-reads the chain rather than trusting them.
  */
 
-import { Address, Keypair, nativeToScVal, xdr } from "@stellar/stellar-sdk";
+import { Address, Keypair, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
 
 import type { Chain } from "./chain.ts";
 import type { Store, Tab } from "./state.ts";
@@ -20,6 +20,10 @@ export const SECONDS_PER_LEDGER = 5;
 export interface TabConfig {
   token: string;
   tokenDecimals: number;
+  /** Carried by every reported amount, e.g. "TAB". */
+  tokenSymbol: string;
+  /** One sentence saying what the token is; shown once per output. */
+  tokenDescription: string;
   policyContract: string;
   verifierEd25519: string;
   smartAccount: string;
@@ -59,6 +63,10 @@ export function toBaseUnits(amount: string, decimals: number, label = "limit"): 
   if (value <= 0n) throw new Error(`${label} must be greater than zero; got "${amount}"`);
   return value;
 }
+
+/** An amount with its token symbol: "0.0001 TAB". */
+export const withUnit = (value: bigint, cfg: Pick<TabConfig, "tokenDecimals" | "tokenSymbol">): string =>
+  `${fromBaseUnits(value, cfg.tokenDecimals)} ${cfg.tokenSymbol}`;
 
 export function fromBaseUnits(value: bigint, decimals: number): string {
   const neg = value < 0n;
@@ -174,6 +182,7 @@ export async function openTab(
     token: cfg.token,
     limit: limitBase.toString(),
     windowLedgers,
+    window: args.window.trim(),
     expiryLedger,
     agentPublicKey: agent.publicKey(),
     payees: null,
@@ -196,6 +205,7 @@ export interface TabStatus {
   limit: string;
   spent: string;
   remaining: string;
+  token: string;
   windowLedgers: number;
   expiryLedger: number;
   currentLedger: number;
@@ -206,6 +216,21 @@ export interface TabStatus {
   };
   warnings: string[];
   receipts: unknown[];
+}
+
+/** The policy's own record of a tab's cap and rolling-window spend, in base units. */
+export async function readSpend(
+  chain: Chain,
+  cfg: TabConfig,
+  tab: Pick<Tab, "policyContract" | "contextRuleId">
+): Promise<{ limit: bigint; spent: bigint; periodLedgers: number }> {
+  const data = (await chain.read({
+    contract: tab.policyContract,
+    fn: "get_spending_limit_data",
+    args: [xdr.ScVal.scvU32(tab.contextRuleId), new Address(cfg.smartAccount).toScVal()],
+  })) as { spending_limit: bigint; period_ledgers: number; cached_total_spent: bigint };
+
+  return { limit: BigInt(data.spending_limit), spent: BigInt(data.cached_total_spent), periodLedgers: Number(data.period_ledgers) };
 }
 
 /**
@@ -228,15 +253,10 @@ export async function tabStatus(
     throw new Error(tabIdArg ? `no tab with id ${tabIdArg}` : "no open tab");
   }
 
-  const data = (await chain.read({
-    contract: tab.policyContract,
-    fn: "get_spending_limit_data",
-    args: [xdr.ScVal.scvU32(tab.contextRuleId), new Address(cfg.smartAccount).toScVal()],
-  })) as { spending_limit: bigint; period_ledgers: number; cached_total_spent: bigint };
-
-  const currentLedger = await chain.latestLedger();
-  const limit = BigInt(data.spending_limit);
-  const spent = BigInt(data.cached_total_spent);
+  const [{ limit, spent, periodLedgers }, currentLedger] = await Promise.all([
+    readSpend(chain, cfg, tab),
+    chain.latestLedger(),
+  ]);
   const remaining = limit > spent ? limit - spent : 0n;
 
   const expired = currentLedger > tab.expiryLedger;
@@ -261,10 +281,11 @@ export async function tabStatus(
     tabId: tab.tabId,
     status,
     source: "chain",
-    limit: fromBaseUnits(limit, cfg.tokenDecimals),
-    spent: fromBaseUnits(spent, cfg.tokenDecimals),
-    remaining: fromBaseUnits(remaining, cfg.tokenDecimals),
-    windowLedgers: Number(data.period_ledgers),
+    limit: withUnit(limit, cfg),
+    spent: withUnit(spent, cfg),
+    remaining: withUnit(remaining, cfg),
+    token: cfg.tokenDescription,
+    windowLedgers: periodLedgers,
     expiryLedger: tab.expiryLedger,
     currentLedger,
     ledgersRemaining: Math.max(0, tab.expiryLedger - currentLedger),
@@ -272,8 +293,8 @@ export async function tabStatus(
       amount: {
         enforced: true,
         by: "on-chain policy",
-        limit: fromBaseUnits(limit, cfg.tokenDecimals),
-        window_ledgers: Number(data.period_ledgers),
+        limit: withUnit(limit, cfg),
+        window_ledgers: periodLedgers,
       },
       payees: {
         enforced: false,
@@ -282,15 +303,93 @@ export async function tabStatus(
       },
     },
     warnings,
-    receipts: store.receipts(tab.tabId),
+    // Receipts store amount and asset apart; the report joins them.
+    receipts: store.receipts(tab.tabId).map(({ amount, asset, ...rest }) =>
+      amount === undefined ? rest : { ...rest, amount: `${amount} ${asset ?? cfg.tokenSymbol}` }
+    ),
   };
+}
+
+export interface RuleListingKey {
+  id: number;
+  name: string;
+  validUntil: number | null;
+  expired: boolean;
 }
 
 export interface CloseTabResult {
   tabId: string;
   tx: string;
+  /** With its token symbol. */
   finalSpent: string;
   tab: Tab;
+  /**
+   * Other rules on the account that still list the agent key, read from the
+   * chain after the removal -- or why that could not be checked.
+   */
+  otherRules: { checkedRules: number; listing: RuleListingKey[] } | { error: string };
+}
+
+/** The account's next context-rule id, read from its instance storage. Ids are never reused. */
+async function nextContextRuleId(chain: Chain, account: string): Promise<number> {
+  const key = xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: new Address(account).toScAddress(),
+      key: xdr.ScVal.scvLedgerKeyContractInstance(),
+      durability: xdr.ContractDataDurability.persistent(),
+    })
+  );
+  const { entries } = await chain.server.getLedgerEntries(key);
+  const wanted = xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("NextId")]).toXDR("base64");
+  const entry = entries[0]?.val.contractData().val().instance().storage()?.find((e) => e.key().toXDR("base64") === wanted);
+
+  if (!entry) throw new Error("the account's instance storage has no NextId");
+  return Number(scValToNative(entry.val()));
+}
+
+/**
+ * Every live-or-expired context rule on the account that lists `agentPublicKey`
+ * as an External signer. The contract has no list call, so this probes each
+ * id below NextId; a removed id answers Error(Contract, #3000) and is skipped.
+ * Any other failure throws, rather than being mistaken for "not there".
+ */
+export async function rulesListingKey(
+  chain: Chain,
+  account: string,
+  agentPublicKey: string
+): Promise<{ checkedRules: number; listing: RuleListingKey[] }> {
+  const agentKey = Buffer.from(rawEd25519Key(agentPublicKey)).toString("hex");
+  const [nextId, currentLedger] = await Promise.all([nextContextRuleId(chain, account), chain.latestLedger()]);
+
+  type Rule = { id: number; name: string; valid_until?: number | null; signers: [string, string, Uint8Array?][] };
+  const rules: Rule[] = [];
+
+  for (let start = 0; start < nextId; start += 8) {
+    const batch = await Promise.all(
+      Array.from({ length: Math.min(8, nextId - start) }, (_, i) => start + i).map((id) =>
+        chain.read({ contract: account, fn: "get_context_rule", args: [xdr.ScVal.scvU32(id)] }).then(
+          (rule) => rule as Rule,
+          (error: Error) => {
+            if (/Error\(Contract, #3000\)/.test(error.message)) return null;
+            throw error;
+          }
+        )
+      )
+    );
+    rules.push(...batch.filter((r): r is Rule => r !== null));
+  }
+
+  const listing = rules
+    .filter((rule) =>
+      rule.signers.some(([kind, , keyData]) => kind === "External" && keyData && Buffer.from(keyData).toString("hex") === agentKey)
+    )
+    .map((rule) => {
+      const validUntil = rule.valid_until ?? null;
+      // The account rejects a rule once valid_until < the current ledger (UnvalidatedContext, #3002).
+      return { id: Number(rule.id), name: rule.name, validUntil, expired: validUntil !== null && validUntil < currentLedger };
+    });
+
+  return { checkedRules: rules.length, listing };
 }
 
 /**
@@ -318,7 +417,7 @@ export async function closeTab(
   if (!tab) throw new Error(tabIdArg ? `no tab with id ${tabIdArg}` : "no open tab");
   if (tab.status === "closed") throw new Error(`${tab.tabId} is already closed`);
 
-  const before = await tabStatus(chain, store, cfg, tab.tabId);
+  const before = await readSpend(chain, cfg, tab);
 
   const result = await chain.send(
     {
@@ -346,8 +445,13 @@ export async function closeTab(
     at: closed.closedAt!,
     kind: "close",
     tx: closed.closeTx,
-    amount: before.spent,
+    amount: fromBaseUnits(before.spent, cfg.tokenDecimals),
+    asset: cfg.tokenSymbol,
   });
 
-  return { tabId: tab.tabId, tx: result.hash!, finalSpent: before.spent, tab: closed };
+  const otherRules = await rulesListingKey(chain, cfg.smartAccount, tab.agentPublicKey).catch(
+    (error: Error) => ({ error: error.message })
+  );
+
+  return { tabId: tab.tabId, tx: result.hash!, finalSpent: withUnit(before.spent, cfg), tab: closed, otherRules };
 }

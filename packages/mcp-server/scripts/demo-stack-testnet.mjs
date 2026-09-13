@@ -96,7 +96,7 @@ try {
 
   const status = await call("tab_status", { tab_id: tab.tab_id });
   const payments = status.receipts.filter((r) => r.kind === "payment");
-  check(status.spent === "0.00045", "tab_status: 0.0001 + 0.00025 + 0.0001 spent, read from the chain", `spent ${status.spent}, remaining ${status.remaining}`);
+  check(status.spent === "0.00045 TAB", "tab_status: 0.0001 + 0.00025 + 0.0001 spent, read from the chain", `spent ${status.spent}, remaining ${status.remaining}`);
   check(payments.length === 3 && payments.every((r) => r.tx && r.endpoint && r.at && r.amount), "three receipts with tx, endpoint, timestamp, amount");
 } finally {
   const closed = await call("close_tab", { tab_id: tab.tab_id });

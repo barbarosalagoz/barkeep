@@ -98,7 +98,7 @@ check(opened.payee_enforcement === "none", "reports that payees are not enforced
 console.log("\n12. tab_status");
 
 const before = await call("tab_status", { tab_id: opened.tab_id });
-check(before.spent === "0", "starts at zero spent", `limit ${before.limit}, spent ${before.spent}`);
+check(before.spent === "0 TAB", "starts at zero spent", `limit ${before.limit}, spent ${before.spent}`);
 check(before.source === "chain", "reports the chain as its source");
 check(
   before.constraints.payees.enforced === false && before.warnings.some((w) => /not WHO TO/.test(w)),
@@ -132,11 +132,11 @@ const after = await call("tab_status", { tab_id: opened.tab_id });
 const expected = (Number(LIMIT) * 1e7 - Number(OUTSIDE)) / 1e7;
 
 check(
-  after.spent === "0.0002",
+  after.spent === "0.0002 TAB",
   "tab_status reflects spending the server never saw",
   `spent ${before.spent} -> ${after.spent}, remaining ${after.remaining} (expected ${expected})`
 );
-check(Number(after.remaining) === expected, "remaining is limit minus on-chain spend");
+check(parseFloat(after.remaining) === expected && after.remaining.endsWith(" TAB"), "remaining is limit minus on-chain spend");
 
 /* ---- 13. close_tab revokes the key --------------------------------------- */
 console.log("\n13. close_tab");

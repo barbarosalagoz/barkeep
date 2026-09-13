@@ -24,7 +24,7 @@ import { Chain, explorerTx } from "./chain.ts";
 import { keypairFromEnv } from "./keys.ts";
 import { createPayer } from "./pay.ts";
 import { Store } from "./state.ts";
-import { closeTab, openTab, tabStatus, type TabConfig } from "./tabs.ts";
+import { closeTab, openTab, tabStatus, withUnit, type CloseTabResult, type RuleListingKey, type TabConfig } from "./tabs.ts";
 import { loadDeployment } from "./deployment.ts";
 import { X402_NETWORK, smartAccountExactScheme } from "./x402Scheme.ts";
 
@@ -45,6 +45,37 @@ const failure = (error: unknown) => ({
   content: [{ type: "text" as const, text: String((error as Error)?.message ?? error) }],
 });
 
+/**
+ * What the chain says about the agent key after a close, in one sentence. It
+ * states what was checked; it never claims the key is gone from the account
+ * unless every rule was read and none lists it.
+ */
+export function describeOtherRules(other: CloseTabResult["otherRules"]): string {
+  if ("error" in other) {
+    return `Not checked (${other.error}). The agent key may still be a signer on other rules on this account.`;
+  }
+
+  const live = other.listing.filter((r) => !r.expired);
+  const expired = other.listing.filter((r) => r.expired);
+  const ids = (rules: RuleListingKey[]) => rules.map((r) => r.id).join(", ");
+
+  if (live.length > 0) {
+    return (
+      `WARNING: the agent key is still a signer on ${live.length} live rule(s) (${ids(live)}) and can still spend through them. ` +
+      (expired.length ? `It is also on ${expired.length} expired rule(s) (${ids(expired)}).` : "")
+    ).trim();
+  }
+
+  if (expired.length > 0) {
+    return (
+      `The agent key is still listed on ${expired.length} other rule(s) (${ids(expired)}), all expired, so none can authorise a spend ` +
+      `(Error(Contract, #3002), UnvalidatedContext). Checked all ${other.checkedRules} rules on the account.`
+    );
+  }
+
+  return `The agent key is on no other rule. Checked all ${other.checkedRules} rules on the account.`;
+}
+
 export function createServer(): McpServer {
   const deployment = loadDeployment();
   const store = new Store();
@@ -52,6 +83,8 @@ export function createServer(): McpServer {
   const cfg: TabConfig = {
     token: deployment.contracts.token.id,
     tokenDecimals: 7,
+    tokenSymbol: deployment.contracts.token.symbol!,
+    tokenDescription: deployment.contracts.token.description!,
     policyContract: deployment.contracts.policySpendingLimit.id,
     verifierEd25519: deployment.contracts.verifierEd25519.id,
     smartAccount: deployment.contracts.smartAccount.id,
@@ -75,6 +108,8 @@ export function createServer(): McpServer {
     store,
     fetch: globalThis.fetch,
     tokenDecimals: cfg.tokenDecimals,
+    tokenSymbol: cfg.tokenSymbol,
+    tokenDescription: cfg.tokenDescription,
     createPayload: async (tab, maxAmount, paymentRequired) => {
       const agent = keypairFromEnv("BARKEEP_AGENT_SECRET");
       if (agent.publicKey() !== tab.agentPublicKey) {
@@ -113,7 +148,7 @@ export function createServer(): McpServer {
         "session key, a spending-limit policy and an expiry. Returns a tab id and the " +
         "transaction hash. The cap limits how much, not who to.",
       inputSchema: {
-        limit: z.string().describe('Cap for the window, in token units, e.g. "0.5"'),
+        limit: z.string().describe(`Cap for the window, in ${cfg.tokenSymbol} (${cfg.tokenDescription}) e.g. "0.5"`),
         window: z.string().describe('Rolling window as an ISO-8601 duration, e.g. "PT1H"'),
         payees: z
           .array(z.string())
@@ -138,6 +173,8 @@ export function createServer(): McpServer {
 
         return text({
           tab_id: result.tabId,
+          limit: withUnit(BigInt(result.tab.limit), cfg),
+          token: cfg.tokenDescription,
           context_rule_id: result.contextRuleId,
           policy: cfg.policyContract,
           expiry_ledger: result.expiryLedger,
@@ -169,7 +206,7 @@ export function createServer(): McpServer {
         "(same tab, url, max_amount and request_id) pay once and return the stored result.",
       inputSchema: {
         url: z.string().describe("The resource to fetch"),
-        max_amount: z.string().describe('Most to pay for this one request, in token units, e.g. "0.01"'),
+        max_amount: z.string().describe(`Most to pay for this one request, in ${cfg.tokenSymbol}, e.g. "0.01"`),
         tab_id: z.string().optional().describe("Defaults to the current tab"),
         request_id: z
           .string()
@@ -240,9 +277,11 @@ export function createServer(): McpServer {
         return text({
           tab_id: result.tabId,
           final_spent: result.finalSpent,
+          token: cfg.tokenDescription,
           tx: result.tx,
           explorer: explorerTx(result.tx),
-          revoked: "the agent session key is no longer a signer on any context rule",
+          revoked: `Rule ${result.tab.contextRuleId}, this tab's rule, is removed: the agent key can no longer spend through this tab.`,
+          agent_key_on_other_rules: describeOtherRules(result.otherRules),
         });
       } catch (error) {
         return failure(error);

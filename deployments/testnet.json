@@ -54,6 +54,8 @@
     },
     "token": {
       "id": "CBXLQ3TCM6EB6KXBYDQVZ3NJO2SAL5FY5BZPMTLGQPROANSSP7RFHP3V",
+      "symbol": "TAB",
+      "description": "TAB, a throwaway Testnet test asset issued by Barkeep's deployer. It is not USDC and has no value.",
       "note": "Stellar Asset Contract for TAB:<deployer>, a throwaway Testnet test asset used by the tab done-test.",
       "audited": null
     }

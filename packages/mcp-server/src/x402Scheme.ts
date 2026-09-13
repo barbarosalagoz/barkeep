@@ -42,6 +42,21 @@ export function contractRefusal(simulationError: string): string {
   return `Error(Contract, #${code})${REFUSALS[code] ? ` ${REFUSALS[code]}` : ""}`;
 }
 
+/**
+ * The smart account refused the signed payment when it was simulated: its
+ * __check_auth or the rule's policy said no. Nothing was sent anywhere.
+ */
+export class AccountRefusal extends Error {
+  /** The contract error number, e.g. "3221", when the chain reported one. */
+  readonly code: string | null;
+
+  constructor(simulationError: string) {
+    super(contractRefusal(simulationError));
+    this.name = "AccountRefusal";
+    this.code = /Error\(Contract, #(\d+)\)/.exec(simulationError)?.[1] ?? null;
+  }
+}
+
 export interface SmartAccountSchemeOptions {
   agent: Keypair;
   contextRuleId: number;
@@ -95,7 +110,7 @@ export function smartAccountExactScheme(chain: Chain, opts: SmartAccountSchemeOp
       // Enforcing mode: __check_auth and the policy run. Cap and expiry refusals surface here.
       const withAuth = build(signed);
       const enforcing = await chain.server.simulateTransaction(withAuth);
-      if (rpc.Api.isSimulationError(enforcing)) throw new Error(`refused by the account: ${contractRefusal(enforcing.error)}`);
+      if (rpc.Api.isSimulationError(enforcing)) throw new AccountRefusal(enforcing.error);
 
       const tx = rpc.assembleTransaction(withAuth, enforcing).build();
       return { x402Version, payload: { transaction: tx.toXDR() } };

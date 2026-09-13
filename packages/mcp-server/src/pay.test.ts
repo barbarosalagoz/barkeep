@@ -7,6 +7,7 @@ import type { PaymentPayload, PaymentRequired } from "@x402/core/types";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { createPayer, type PayDeps } from "./pay.ts";
+import { AccountRefusal } from "./x402Scheme.ts";
 import { Store, type Tab } from "./state.ts";
 
 /*
@@ -18,6 +19,8 @@ import { Store, type Tab } from "./state.ts";
 const TOKEN = "CBXLQ3TCM6EB6KXBYDQVZ3NJO2SAL5FY5BZPMTLGQPROANSSP7RFHP3V";
 const SELLER = "GA5SX5BBXI6N6TA3ZWVX5QDRISXWXHIYUDCHG6LKGIY6RUFAMS65AGX2";
 const URL = "http://seller.test/paid";
+
+const TOKEN_DEPS = { tokenDecimals: 7, tokenSymbol: "TAB", tokenDescription: "TAB, a test asset. Not USDC." };
 
 const dirs: string[] = [];
 afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
@@ -87,7 +90,7 @@ function setup(price: string, outcome?: () => Settle, dir = mkdtempSync(join(tmp
     })
   );
   const store = new Store(dir);
-  const deps: PayDeps = { store, fetch: s.fetch, tokenDecimals: 7, createPayload };
+  const deps: PayDeps = { store, fetch: s.fetch, createPayload, ...TOKEN_DEPS };
   return { pay: createPayer(deps), store, createPayload, dir, ...s };
 }
 
@@ -98,7 +101,7 @@ describe("pay_and_fetch", () => {
     const first = await pay(tab, { url: URL, max_amount: "0.001" });
     const second = await pay(tab, { url: URL, max_amount: "0.001" });
 
-    expect(first).toMatchObject({ paid: true, replayed: false, tx: "tx1", amount: "0.0001", body: "paid content 1" });
+    expect(first).toMatchObject({ paid: true, replayed: false, tx: "tx1", amount: "0.0001 TAB", token: TOKEN_DEPS.tokenDescription, body: "paid content 1" });
     expect(second).toMatchObject({ paid: true, replayed: true, tx: "tx1", body: "paid content 1" });
     expect(createPayload).toHaveBeenCalledTimes(1);
     expect(signatures).toHaveLength(1);
@@ -145,25 +148,35 @@ describe("pay_and_fetch", () => {
     await pay(tab, { url: URL, max_amount: "0.001" });
 
     const [receipt] = store.receipts(tab.tabId);
-    expect(receipt).toMatchObject({ tabId: tab.tabId, kind: "payment", tx: "tx1", amount: "0.00025", endpoint: URL, to: SELLER });
+    expect(receipt).toMatchObject({ tabId: tab.tabId, kind: "payment", tx: "tx1", amount: "0.00025", asset: "TAB", endpoint: URL, to: SELLER });
     expect(Date.parse(receipt.at)).not.toBeNaN();
   });
 
   it("refuses a price above max_amount before signing anything", async () => {
     const { pay, createPayload, signatures, store } = setup("20000");
 
-    await expect(pay(tab, { url: URL, max_amount: "0.001" })).rejects.toThrow(/exceeds max_amount.*Nothing was signed/);
+    await expect(pay(tab, { url: URL, max_amount: "0.001" })).rejects.toThrow(/Price 0\.002 TAB exceeds max_amount 0\.001 TAB.*Nothing was signed/);
     expect(createPayload).not.toHaveBeenCalled();
     expect(signatures).toHaveLength(0);
-    expect(store.receipts()).toHaveLength(0);
+
+    // Refused, and on the bill as refused -- never as a payment.
+    const receipts = store.receipts(tab.tabId);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]).toMatchObject({
+      kind: "refused", refusedBy: "per-call cap", amount: "0.002", asset: "TAB", endpoint: URL,
+      reason: "price 0.002 TAB exceeds max_amount 0.001 TAB",
+    });
   });
 
   it("records an account refusal as refused, and lets an identical call try again", async () => {
-    const { pay, createPayload, signatures } = setup("1000");
-    createPayload.mockRejectedValueOnce(new Error("refused by the account: HostError: Error(Contract, #3221)"));
+    const { pay, createPayload, signatures, store } = setup("1000");
+    createPayload.mockRejectedValueOnce(new AccountRefusal("HostError: Error(Auth, InvalidAction)\n... Error(Contract, #3221) ..."));
 
     await expect(pay(tab, { url: URL, max_amount: "0.001" })).rejects.toThrow(/#3221/);
     expect(signatures).toHaveLength(0);
+    expect(store.receipts(tab.tabId)).toEqual([
+      expect.objectContaining({ kind: "refused", refusedBy: "on-chain policy", amount: "0.0001", asset: "TAB", reason: expect.stringMatching(/#3221/) }),
+    ]);
 
     await expect(pay(tab, { url: URL, max_amount: "0.001" })).resolves.toMatchObject({ paid: true });
     expect(createPayload).toHaveBeenCalledTimes(2);
@@ -174,14 +187,17 @@ describe("pay_and_fetch", () => {
     const { pay, store } = setup("1000", () => (n++ === 0 ? "invalid" : "settled"));
 
     await expect(pay(tab, { url: URL, max_amount: "0.001" })).rejects.toThrow(/invalid_exact_stellar_payload_event_not_transfer.*Nothing was paid/);
-    expect(store.receipts()).toHaveLength(0);
+    expect(store.receipts()).toEqual([
+      expect.objectContaining({ kind: "refused", refusedBy: "seller's facilitator", reason: "invalid_exact_stellar_payload_event_not_transfer" }),
+    ]);
     await expect(pay(tab, { url: URL, max_amount: "0.001" })).resolves.toMatchObject({ paid: true });
   });
 
   it("does not retry automatically when the outcome is unknown", async () => {
-    const { pay, fetch, signatures } = setup("1000", () => "error");
+    const { pay, fetch, signatures, store } = setup("1000", () => "error");
 
     await expect(pay(tab, { url: URL, max_amount: "0.001" })).rejects.toThrow(/may or may not have settled/);
+    expect(store.receipts()).toEqual([expect.objectContaining({ kind: "unconfirmed", amount: "0.0001", reason: expect.stringMatching(/HTTP 500/) })]);
     const calls = vi.mocked(fetch).mock.calls.length;
 
     await expect(pay(tab, { url: URL, max_amount: "0.001" })).rejects.toThrow(/Not paying again/);
@@ -194,7 +210,7 @@ describe("pay_and_fetch", () => {
     dirs.push(dir);
     const fetch = vi.fn(async () => new Response("free", { status: 200 })) as unknown as typeof globalThis.fetch;
     const createPayload = vi.fn();
-    const pay = createPayer({ store: new Store(dir), fetch, tokenDecimals: 7, createPayload });
+    const pay = createPayer({ store: new Store(dir), fetch, createPayload, ...TOKEN_DEPS });
 
     await expect(pay(tab, { url: URL, max_amount: "0.001" })).resolves.toMatchObject({ paid: false, http_status: 200, body: "free" });
     expect(createPayload).not.toHaveBeenCalled();
