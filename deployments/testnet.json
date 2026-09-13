@@ -246,5 +246,64 @@
         "finalSpent": "0.0002"
       }
     }
+  },
+  "ttlExtension": {
+    "script": "packages/mcp-server/scripts/extend-ttl-testnet.mjs",
+    "why": "Wasm and instance entries of all four contracts and the TAB token's instance were due to archive at ledgers 4764028-4764286, about 2026-09-19 18:49 UTC at 5.0 s/ledger. After archival every call fails at simulation.",
+    "date": "2026-09-13",
+    "maxEntryTtl": 3110400,
+    "note": "Extended to the network maximum; liveUntilLedger read back from RPC getLedgerEntries after each transaction, and each tx cross-checked on Horizon. Not covered: per-rule, per-signer and balance storage (rule 0 and the account's TAB balance live until ~5161758, about 2026-10-12), which the contracts extend as they write. The scheduled Testnet reset (2026-12-16 per developers.stellar.org) wipes all of it regardless.",
+    "estimatedExpiry": "2027-03-12",
+    "txs": {
+      "smartAccount": {
+        "tx": "8038a0a1044855dbe798135019992469537b4f326ecab5d242a7e638c702c5e1",
+        "ledger": 4652282,
+        "successful": true,
+        "feeXlm": "50.5751002",
+        "liveUntilLedger": {
+          "wasm": 7762681,
+          "instance": 7762681
+        }
+      },
+      "policySpendingLimit": {
+        "tx": "42cf369f7956039c4f57e21163af4af6da2cb03e6b2a37b881aa6dc0802394c1",
+        "ledger": 4652283,
+        "successful": true,
+        "feeXlm": "16.9603975",
+        "liveUntilLedger": {
+          "wasm": 7762682,
+          "instance": 7762682
+        }
+      },
+      "verifierEd25519": {
+        "tx": "262c8fd9e99c267495fbb0f5855ba7a86451e864dc5043a6c66888ccf039e4cc",
+        "ledger": 4652284,
+        "successful": true,
+        "feeXlm": "3.5406025",
+        "liveUntilLedger": {
+          "wasm": 7762683,
+          "instance": 7762683
+        }
+      },
+      "verifierWebAuthn": {
+        "tx": "ebdd771cd67a03d39e354e7e303179f8309a950f209bb6b9c3175724758753e5",
+        "ledger": 4652285,
+        "successful": true,
+        "feeXlm": "24.089489",
+        "liveUntilLedger": {
+          "wasm": 7762684,
+          "instance": 7762684
+        }
+      },
+      "token": {
+        "tx": "38d7af1884225a5cc6e95daee33f5ae8308d04e2204f5dfb0ca5d218a1fc0c55",
+        "ledger": 4652286,
+        "successful": true,
+        "feeXlm": "0.1142458",
+        "liveUntilLedger": {
+          "instance": 7762685
+        }
+      }
+    }
   }
 }
