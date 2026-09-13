@@ -29,9 +29,9 @@ import {
 import type { PaymentPayload, PaymentRequired, PaymentRequirements } from "@x402/core/types";
 
 import { explorerTx } from "./chain.ts";
-import type { PaymentRecord, Store, Tab } from "./state.ts";
+import type { PaymentRecord, Receipt, Store, Tab } from "./state.ts";
 import { fromBaseUnits, toBaseUnits } from "./tabs.ts";
-import { X402_NETWORK } from "./x402Scheme.ts";
+import { AccountRefusal, X402_NETWORK } from "./x402Scheme.ts";
 
 /** Stored and returned body size; the rest is dropped and flagged. */
 const MAX_BODY_CHARS = 32_000;
@@ -47,11 +47,20 @@ export interface PayDeps {
   store: Store;
   fetch: typeof globalThis.fetch;
   tokenDecimals: number;
+  /** Symbol every reported amount carries, e.g. "TAB". */
+  tokenSymbol: string;
+  /** One sentence saying what the token is, shown with every result. */
+  tokenDescription: string;
   /**
    * Sign the x402 payload for the one requirement chosen. In the server this is
    * smartAccountExactScheme behind an x402Client; tests substitute it.
    */
   createPayload: (tab: Tab, maxAmount: bigint, paymentRequired: PaymentRequired) => Promise<PaymentPayload>;
+  /**
+   * What is left under the tab's cap, in base units, read from the policy on
+   * chain. Only used to word a spending-limit refusal; optional.
+   */
+  remaining?: (tab: Tab) => Promise<bigint>;
 }
 
 export interface PayResult {
@@ -61,7 +70,9 @@ export interface PayResult {
   paid: boolean;
   /** True when this answer is the stored result of an earlier identical call. */
   replayed: boolean;
+  /** With its token symbol, e.g. "0.0001 TAB". */
   amount?: string;
+  token: string;
   pay_to?: string;
   tx?: string;
   explorer?: string;
@@ -101,19 +112,70 @@ function refusalReason(res: Response, text: string): string | undefined {
 export function createPayer(deps: PayDeps) {
   const inFlight = new Map<string, Promise<PayResult>>();
 
+  const units = (base: bigint) => `${fromBaseUnits(base, deps.tokenDecimals)} ${deps.tokenSymbol}`;
+
+  /**
+   * Every attempt that does not settle is written to the receipt log too, with
+   * the reason and what stopped it: a bill that only lists successes hides the
+   * refusals that show the limits working.
+   */
+  const trace = (tab: Tab, url: string, fields: Omit<Receipt, "tabId" | "at" | "endpoint" | "asset">) =>
+    deps.store.appendReceipt({
+      tabId: tab.tabId,
+      at: new Date().toISOString(),
+      endpoint: url,
+      asset: deps.tokenSymbol,
+      ...fields,
+    });
+
   const fromRecord = (r: PaymentRecord, replayed: boolean): PayResult => ({
     tab_id: r.tabId,
     url: r.url,
     http_status: r.httpStatus ?? 0,
     paid: r.status === "settled",
     replayed,
-    amount: r.amount ? fromBaseUnits(BigInt(r.amount), deps.tokenDecimals) : undefined,
+    amount: r.amount ? units(BigInt(r.amount)) : undefined,
+    token: deps.tokenDescription,
     pay_to: r.payTo,
     tx: r.tx,
     explorer: r.tx ? explorerTx(r.tx) : undefined,
     body: r.body ?? "",
     body_truncated: r.bodyTruncated ?? false,
   });
+
+  /**
+   * One sentence for a refusal by the smart account: who refused, the numbers
+   * that made it refuse, and the contract error with its meaning.
+   */
+  async function accountRefusalMessage(error: AccountRefusal, tab: Tab, price: bigint): Promise<string> {
+    const nothing = "Nothing was sent or paid.";
+
+    switch (error.code) {
+      case "3221": {
+        const left = deps.remaining ? await deps.remaining(tab).catch(() => null) : null;
+        const numbers =
+          left === null
+            ? `the price, ${units(price)}, would take this tab over its cap`
+            : `the price, ${units(price)}, is more than the ${units(left)} left on this tab`;
+        return (
+          `The smart account's on-chain spending-limit policy refused this payment: ${numbers} ` +
+          `(Error(Contract, #3221), SpendingLimitExceeded: the tab's cap for its window would be exceeded). ${nothing}`
+        );
+      }
+      case "3002":
+        return (
+          `The smart account refused this payment on chain: this tab has expired ` +
+          `(Error(Contract, #3002), UnvalidatedContext: the tab's rule is past its expiry ledger). ${nothing}`
+        );
+      case "3000":
+        return (
+          `The smart account refused this payment on chain: this tab's rule no longer exists ` +
+          `(Error(Contract, #3000), ContextRuleNotFound: the tab was closed). ${nothing}`
+        );
+      default:
+        return `The smart account refused this payment on chain (${error.message}). ${nothing}`;
+    }
+  }
 
   async function pay(tab: Tab, args: PayArgs, maxAmount: bigint, key: string): Promise<PayResult> {
     const existing = deps.store.getPayment(key);
@@ -131,7 +193,10 @@ export function createPayer(deps: PayDeps) {
 
     if (first.status !== 402) {
       const { body, bodyTruncated } = clip(firstText);
-      return { tab_id: tab.tabId, url: args.url, http_status: first.status, paid: false, replayed: false, body, body_truncated: bodyTruncated };
+      return {
+        tab_id: tab.tabId, url: args.url, http_status: first.status, paid: false, replayed: false,
+        token: deps.tokenDescription, body, body_truncated: bodyTruncated,
+      };
     }
 
     // x402 v2 only: Stellar has no v1, and v2 carries the challenge in a header.
@@ -152,7 +217,9 @@ export function createPayer(deps: PayDeps) {
 
     if (usable.length === 0) {
       const offered = paymentRequired.accepts.map((r) => `${r.scheme}/${r.network}/${r.asset}`).join(", ");
-      throw new Error(`No payment option this tab can use (exact, ${X402_NETWORK}, ${tab.token}). Offered: ${offered}. Nothing was paid.`);
+      const reason = `no payment option this tab can use (exact, ${X402_NETWORK}, ${deps.tokenSymbol} ${tab.token}); offered: ${offered}`;
+      trace(tab, args.url, { kind: "refused", refusedBy: "payment terms", reason });
+      throw new Error(`No payment option this tab can use (exact, ${X402_NETWORK}, ${deps.tokenSymbol}). Offered: ${offered}. Nothing was paid.`);
     }
 
     const chosen: PaymentRequirements = usable[0];
@@ -160,9 +227,9 @@ export function createPayer(deps: PayDeps) {
 
     // The per-call cap: checked before anything is signed.
     if (price > maxAmount) {
-      throw new Error(
-        `Price ${fromBaseUnits(price, deps.tokenDecimals)} exceeds max_amount ${args.max_amount}. Nothing was signed or paid.`
-      );
+      const reason = `price ${units(price)} exceeds max_amount ${units(maxAmount)}`;
+      trace(tab, args.url, { kind: "refused", refusedBy: "per-call cap", amount: fromBaseUnits(price, deps.tokenDecimals), to: chosen.payTo, reason });
+      throw new Error(`Price ${units(price)} exceeds max_amount ${units(maxAmount)}. Nothing was signed or paid.`);
     }
 
     const now = () => new Date().toISOString();
@@ -191,8 +258,19 @@ export function createPayer(deps: PayDeps) {
       payload = await deps.createPayload(tab, maxAmount, { ...paymentRequired, accepts: [chosen] });
     } catch (error) {
       // Nothing left this process: the account refused the signed entry, or signing failed.
-      save({ status: "refused", error: (error as Error).message });
-      throw new Error(`Payment refused before it was sent: ${(error as Error).message}`, { cause: error });
+      const message =
+        error instanceof AccountRefusal
+          ? await accountRefusalMessage(error, tab, price)
+          : `The payment could not be signed: ${(error as Error).message}. Nothing was sent or paid.`;
+      save({ status: "refused", error: message });
+      trace(tab, args.url, {
+        kind: "refused",
+        refusedBy: error instanceof AccountRefusal ? "on-chain policy" : "signing",
+        amount: fromBaseUnits(price, deps.tokenDecimals),
+        to: chosen.payTo,
+        reason: message,
+      });
+      throw new Error(message, { cause: error });
     }
 
     let second: Response;
@@ -202,6 +280,12 @@ export function createPayer(deps: PayDeps) {
       secondText = await second.text();
     } catch (error) {
       save({ status: "unconfirmed", error: (error as Error).message });
+      trace(tab, args.url, {
+        kind: "unconfirmed",
+        amount: fromBaseUnits(price, deps.tokenDecimals),
+        to: chosen.payTo,
+        reason: `request failed after the payment signature was sent: ${(error as Error).message}`,
+      });
       throw new Error(`The paid request failed after the payment signature was sent; outcome unknown: ${(error as Error).message}`,
         { cause: error }
       );
@@ -224,6 +308,7 @@ export function createPayer(deps: PayDeps) {
         at: record.updatedAt,
         kind: "payment",
         amount: fromBaseUnits(price, deps.tokenDecimals),
+        asset: deps.tokenSymbol,
         to: chosen.payTo,
         tx: settle.transaction,
         endpoint: args.url,
@@ -245,6 +330,7 @@ export function createPayer(deps: PayDeps) {
      */
     if (second.status === 402 && reason?.startsWith("invalid_")) {
       save({ status: "refused", httpStatus: second.status, error: reason });
+      trace(tab, args.url, { kind: "refused", refusedBy: "seller's facilitator", amount: fromBaseUnits(price, deps.tokenDecimals), to: chosen.payTo, reason });
       throw new Error(
         `The seller's facilitator refused the payment: ${reason}. Nothing was paid. ` +
           `If the reason concerns fees or events, the seller's facilitator does not accept smart-account payers.`
@@ -252,6 +338,12 @@ export function createPayer(deps: PayDeps) {
     }
 
     save({ status: "unconfirmed", httpStatus: second.status, body, bodyTruncated, error: reason });
+    trace(tab, args.url, {
+      kind: "unconfirmed",
+      amount: fromBaseUnits(price, deps.tokenDecimals),
+      to: chosen.payTo,
+      reason: `no settlement came back (HTTP ${second.status}${reason ? `, ${reason}` : ""})`,
+    });
     throw new Error(
       `No settlement came back (HTTP ${second.status}${reason ? `, ${reason}` : ""}). The payment may or may not ` +
         `have settled; it will not be retried automatically. Check tab_status.`

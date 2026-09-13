@@ -39,6 +39,8 @@ export interface Tab {
   /** Cap in token base units (stroops), as a decimal string. */
   limit: string;
   windowLedgers: number;
+  /** The window as requested, ISO-8601 (e.g. PT1H). Absent on tabs opened before it was stored. */
+  window?: string;
   expiryLedger: number;
   /** Public key of the agent session signer. Never the secret. */
   agentPublicKey: string;
@@ -61,12 +63,23 @@ export interface Tab {
 export interface Receipt {
   tabId: string;
   at: string;
-  kind: "open" | "close" | "payment";
+  /**
+   * payment      settled; `tx` is the transfer
+   * refused      a payment was attempted and did not happen; `reason` and
+   *              `refusedBy` say why and who stopped it
+   * unconfirmed  a payment signature went out and no settlement came back
+   */
+  kind: "open" | "close" | "payment" | "refused" | "unconfirmed";
+  /** Decimal token units. On refused/unconfirmed, the price that was asked. */
   amount?: string;
+  /** Token symbol the amount is in. Absent on receipts written before it was recorded. */
+  asset?: string;
   to?: string;
   tx?: string;
-  /** The URL paid for, on a payment receipt. */
+  /** The URL paid for, on payment, refused and unconfirmed receipts. */
   endpoint?: string;
+  reason?: string;
+  refusedBy?: "on-chain policy" | "per-call cap" | "seller's facilitator" | "payment terms" | "signing";
   note?: string;
 }
 

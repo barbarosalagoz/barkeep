@@ -14,7 +14,7 @@ export interface Deployment {
   networkPassphrase: string;
   rpcUrl: string;
   deployer: string;
-  contracts: Record<string, { id: string }>;
+  contracts: Record<string, { id: string; symbol?: string; description?: string }>;
 }
 
 export function loadDeployment(path?: string): Deployment {
@@ -29,6 +29,15 @@ export function loadDeployment(path?: string): Deployment {
     if (!parsed.contracts?.[required]?.id) {
       throw new Error(`${file} is missing contracts.${required}.id`);
     }
+  }
+
+  /*
+   * Every amount Barkeep reports carries the token's symbol, and the token is
+   * described once per output, so a Testnet test asset is never mistaken for
+   * USDC. Both come from the deployment record, not from code.
+   */
+  if (!parsed.contracts.token.symbol || !parsed.contracts.token.description) {
+    throw new Error(`${file} is missing contracts.token.symbol or contracts.token.description`);
   }
 
   if (parsed.network !== "testnet") {

@@ -59,8 +59,10 @@ await client.connect(transport);
 
 const call = async (name, args = {}) => {
   const r = await client.callTool({ name, arguments: args });
-  const body = r.content?.[0]?.text ?? "";
-  return r.isError ? { error: body } : JSON.parse(body);
+  const text = r.content?.[0]?.text ?? "";
+  if (r.isError) return { error: text };
+  // pay_and_fetch returns the resource body as a second, plain-text content item.
+  return r.content?.[1] ? { ...JSON.parse(text), body: r.content[1].text } : JSON.parse(text);
 };
 
 const horizonSource = async (hash) =>
@@ -96,7 +98,7 @@ try {
 
   const status = await call("tab_status", { tab_id: tab.tab_id });
   const payments = status.receipts.filter((r) => r.kind === "payment");
-  check(status.spent === "0.00045", "tab_status: 0.0001 + 0.00025 + 0.0001 spent, read from the chain", `spent ${status.spent}, remaining ${status.remaining}`);
+  check(status.spent === "0.00045 TAB", "tab_status: 0.0001 + 0.00025 + 0.0001 spent, read from the chain", `spent ${status.spent}, remaining ${status.remaining}`);
   check(payments.length === 3 && payments.every((r) => r.tx && r.endpoint && r.at && r.amount), "three receipts with tx, endpoint, timestamp, amount");
 } finally {
   const closed = await call("close_tab", { tab_id: tab.tab_id });

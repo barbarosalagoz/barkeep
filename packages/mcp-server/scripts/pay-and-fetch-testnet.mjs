@@ -149,8 +149,10 @@ await Promise.all([server.connect(b), client.connect(a)]);
 
 const call = async (name, args = {}) => {
   const r = await client.callTool({ name, arguments: args });
-  const body = r.content?.[0]?.text ?? "";
-  return r.isError ? { error: body } : JSON.parse(body);
+  const text = r.content?.[0]?.text ?? "";
+  if (r.isError) return { error: text };
+  // pay_and_fetch returns the resource body as a second, plain-text content item.
+  return r.content?.[1] ? { ...JSON.parse(text), body: r.content[1].text } : JSON.parse(text);
 };
 
 console.log(`state dir    ${process.env.BARKEEP_STATE_DIR}`);
@@ -171,11 +173,11 @@ try {
     `${p1.error ?? `${p1.amount} to ${p1.pay_to}, body "${p1.body}"`}\n        ${p1.explorer ?? ""}`);
 
   const s1 = await call("tab_status", { tab_id: opened.tab_id });
-  check(s1.spent === "0.0001", "tab_status shows the spend, read from the policy on chain", `spent ${s1.spent}, remaining ${s1.remaining}`);
+  check(s1.spent === "0.0001 TAB", "tab_status shows the spend, read from the policy on chain", `spent ${s1.spent}, remaining ${s1.remaining}`);
 
   const receipt = s1.receipts?.find((r) => r.kind === "payment" && r.tx === p1.tx);
   check(
-    Boolean(receipt && receipt.amount === "0.0001" && receipt.endpoint === `${sellerUrl}/cheap` && receipt.at && receipt.tabId === opened.tab_id),
+    Boolean(receipt && receipt.amount === "0.0001 TAB" && receipt.endpoint === `${sellerUrl}/cheap` && receipt.at && receipt.tab_id === opened.tab_id),
     "the receipt log has tx, amount, endpoint, timestamp and tab id",
     JSON.stringify(receipt)
   );
@@ -198,7 +200,7 @@ try {
     `signatures ${sellerLog.signatures["/cheap"]}, settlements ${JSON.stringify(sellerLog.settles)}`);
 
   const s3 = await call("tab_status", { tab_id: opened.tab_id });
-  check(s3.spent === "0.0002", "the chain agrees: two transfers of 0.0001", `spent ${s3.spent}, remaining ${s3.remaining}`);
+  check(s3.spent === "0.0002 TAB", "the chain agrees: two transfers of 0.0001", `spent ${s3.spent}, remaining ${s3.remaining}`);
   check(s3.receipts.filter((r) => r.kind === "payment").length === 2, "and the receipt log has two payments, not four");
 
   /* ---- P2 ---------------------------------------------------------------- */
@@ -232,7 +234,14 @@ try {
     `${forced.hash ? explorerTx(forced.hash) : forced.stage}\n        ${forced.error}`);
 
   const s2 = await call("tab_status", { tab_id: opened.tab_id });
-  check(s2.spent === "0.0002", "spend is unchanged by the refusal", `spent ${s2.spent}`);
+  check(s2.spent === "0.0002 TAB", "spend is unchanged by the refusal", `spent ${s2.spent}`);
+
+  const refusal = s2.receipts.find((r) => r.kind === "refused" && r.endpoint === `${sellerUrl}/dear`);
+  check(
+    Boolean(refusal && refusal.refused_by === "on-chain policy" && /#3221/.test(refusal.reason) && refusal.amount === "0.00045 TAB"),
+    "the refusal is on the bill, with its reason",
+    JSON.stringify(refusal)
+  );
 } finally {
   const closed = await call("close_tab", { tab_id: opened.tab_id });
   console.log(`\nclose_tab ${closed.error ?? `final spent ${closed.final_spent}\n  ${closed.explorer}`}`);
