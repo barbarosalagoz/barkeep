@@ -92,17 +92,17 @@ const opened = await call("open_tab", { limit: LIMIT, window: "PT1M" });
 
 check(Boolean(opened.tab_id && opened.tx), "creates the rule on chain and returns a tab id + tx",
   `tab ${opened.tab_id}  rule ${opened.context_rule_id}\n        tx ${opened.explorer}`);
-check(opened.payee_enforcement === "none", "reports that payees are not enforced");
+check(/^Not restricted\./.test(opened.payees), "reports that payees are not enforced", opened.payees);
 
 /* ---- 12. tab_status matches the chain ------------------------------------ */
 console.log("\n12. tab_status");
 
 const before = await call("tab_status", { tab_id: opened.tab_id });
 check(before.spent === "0 TAB", "starts at zero spent", `limit ${before.limit}, spent ${before.spent}`);
-check(before.source === "chain", "reports the chain as its source");
 check(
-  before.constraints.payees.enforced === false && before.warnings.some((w) => /not WHO TO/.test(w)),
-  "states plainly that payees are unconstrained"
+  /^Not restricted\..*not who it pays/.test(before.payees),
+  "states plainly that payees are unconstrained",
+  before.payees
 );
 
 /*

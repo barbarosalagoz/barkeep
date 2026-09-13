@@ -226,10 +226,13 @@ export async function openTab(
 }
 
 /** snake_case, like every other tool's output. */
+/**
+ * snake_case, like every other tool's output. Order is reading order: the
+ * numbers, then the bill, then the standing caveat about payees last.
+ */
 export interface TabStatus {
   tab_id: string;
   status: "open" | "closed" | "expired";
-  source: "chain";
   limit: string;
   spent: string;
   remaining: string;
@@ -238,21 +241,25 @@ export interface TabStatus {
   window: string;
   /** "at ledger N, in ~M min (L ledgers)" */
   expires: string;
-  current_ledger: number;
-  constraints: {
-    amount: { enforced: true; by: "on-chain policy"; limit: string; window_ledgers: number };
-    payees: { enforced: false; reason: string } | { enforced: true; allowlist: string[] };
-  };
-  warnings: string[];
-  receipts: unknown[];
+  /** Only conditions that change, e.g. an expired tab. Absent when there are none. */
+  warnings?: string[];
+  receipts: Record<string, unknown>[];
+  payees: string;
 }
+
+/** The standing caveat, worded once for open_tab and tab_status. */
+export const PAYEES_NOT_RESTRICTED =
+  "Not restricted. The cap limits how much this tab can spend, not who it pays: no payee allowlist exists on chain yet.";
+
+export const describePayees = (tab: Pick<Tab, "payeeEnforcement" | "payees">): string =>
+  tab.payeeEnforcement === "none" || !tab.payees ? PAYEES_NOT_RESTRICTED : `Restricted on chain to: ${tab.payees.join(", ")}`;
 
 /**
  * A stored receipt as tab_status reports it: snake_case, and the amount joined
  * with its asset. The log on disk keeps its own shape; this is presentation.
  */
 export function reportReceipt(r: Receipt, cfg: Pick<TabConfig, "tokenSymbol">): Record<string, unknown> {
-  const out: Record<string, unknown> = { tab_id: r.tabId, at: r.at, kind: r.kind };
+  const out: Record<string, unknown> = { at: r.at, kind: r.kind };
   if (r.amount !== undefined) out.amount = `${r.amount} ${r.asset ?? cfg.tokenSymbol}`;
   if (r.endpoint !== undefined) out.endpoint = r.endpoint;
   if (r.to !== undefined) out.to = r.to;
@@ -309,12 +316,6 @@ export async function tabStatus(
     tab.status === "closed" ? "closed" : expired ? "expired" : "open";
 
   const warnings: string[] = [];
-  if (tab.payeeEnforcement === "none") {
-    warnings.push(
-      "This tab caps HOW MUCH, not WHO TO. No payee allowlist is enforced on chain: " +
-        "the agent may send the capped amount to any address."
-    );
-  }
   if (expired && tab.status === "open") {
     warnings.push(
       `The session key expired at ledger ${tab.expiryLedger}; transfers are refused ` +
@@ -325,29 +326,16 @@ export async function tabStatus(
   return {
     tab_id: tab.tabId,
     status,
-    source: "chain",
     limit: withUnit(limit, cfg),
     spent: withUnit(spent, cfg),
     remaining: withUnit(remaining, cfg),
     token: cfg.tokenDescription,
     window: describeWindow(tab.window, periodLedgers),
     expires: describeExpiry(tab.expiryLedger, currentLedger),
-    current_ledger: currentLedger,
-    constraints: {
-      amount: {
-        enforced: true,
-        by: "on-chain policy",
-        limit: withUnit(limit, cfg),
-        window_ledgers: periodLedgers,
-      },
-      payees: {
-        enforced: false,
-        reason:
-          "payee_allowlist is not written or deployed; no destination restriction exists on chain",
-      },
-    },
-    warnings,
+    ...(warnings.length ? { warnings } : {}),
+    // tab_id is the tab's, stated above; each receipt omits it.
     receipts: store.receipts(tab.tabId).map((r) => reportReceipt(r, cfg)),
+    payees: describePayees(tab),
   };
 }
 

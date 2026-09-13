@@ -1,10 +1,18 @@
 import { Keypair, xdr } from "@stellar/stellar-sdk";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
 import type { Chain } from "./chain.ts";
-import { describeOtherRules } from "./index.ts";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { describeOtherRules, presentPayResult } from "./index.ts";
+import { Store, type Tab } from "./state.ts";
 import { rawEd25519Key } from "./keys.ts";
-import { describeExpiry, describeWindow, ledgersToWindow, rulesListingKey, withUnit } from "./tabs.ts";
+import {
+  PAYEES_NOT_RESTRICTED, describeExpiry, describeWindow, ledgersToWindow, rulesListingKey, tabStatus, withUnit,
+  type TabConfig,
+} from "./tabs.ts";
 
 /*
  * close_tab's report on where the agent key still sits, offline. The live
@@ -126,5 +134,77 @@ describe("time", () => {
   it("shows expiry as a ledger and a rough time", () => {
     expect(describeExpiry(4653477, 4652761)).toBe("at ledger 4653477, in ~60 min (716 ledgers)");
     expect(describeExpiry(100, 112)).toBe("at ledger 100, ~1 min ago (12 ledgers)");
+  });
+});
+
+describe("tab_status output", () => {
+  const dir = mkdtempSync(join(tmpdir(), "barkeep-status-"));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  const cfg: TabConfig = {
+    token: "C_TOKEN", tokenDecimals: 7, tokenSymbol: "TAB", tokenDescription: "TAB, a test asset. Not USDC.",
+    policyContract: "C_POLICY", verifierEd25519: VERIFIER, smartAccount: ACCOUNT, adminContextRuleId: 0,
+  };
+  const tab: Tab = {
+    tabId: "tab_shape01", contextRuleId: 18, policyContract: "C_POLICY", token: "C_TOKEN", limit: "5000",
+    windowLedgers: 720, window: "PT1H", expiryLedger: 2000, agentPublicKey: agent, payees: null,
+    payeeEnforcement: "none", status: "open", openedAt: "2026-09-13T00:00:00.000Z", openTx: "open-tx",
+  };
+  const chainAt = (ledger: number) =>
+    ({
+      latestLedger: async () => ledger,
+      read: async () => ({ spending_limit: 5000n, period_ledgers: 720, cached_total_spent: 1000n }),
+    }) as unknown as Chain;
+
+  const store = new Store(dir);
+  store.putTab(tab);
+  store.appendReceipt({ tabId: tab.tabId, at: "1", kind: "open", tx: "open-tx" });
+  store.appendReceipt({ tabId: tab.tabId, at: "2", kind: "refused", amount: "0.002", asset: "TAB", endpoint: "/dataset", refusedBy: "on-chain policy", reason: "over cap" });
+
+  it("is short, snake_case, and ends with the payee caveat", async () => {
+    const status = await tabStatus(chainAt(1284), store, cfg, tab.tabId);
+
+    expect(Object.keys(status)).toEqual([
+      "tab_id", "status", "limit", "spent", "remaining", "token", "window", "expires", "receipts", "payees",
+    ]);
+    expect(status).toMatchObject({
+      limit: "0.0005 TAB", spent: "0.0001 TAB", remaining: "0.0004 TAB",
+      window: "PT1H (720 ledgers)", expires: "at ledger 2000, in ~60 min (716 ledgers)", payees: PAYEES_NOT_RESTRICTED,
+    });
+    expect(status.receipts).toEqual([
+      { at: "1", kind: "open", tx: "open-tx" },
+      { at: "2", kind: "refused", amount: "0.002 TAB", endpoint: "/dataset", refused_by: "on-chain policy", reason: "over cap" },
+    ]);
+    expect(JSON.stringify(status)).not.toMatch(/tabId|refusedBy|"source"|constraints|current_ledger/);
+  });
+
+  it("carries warnings only when something has changed", async () => {
+    const status = await tabStatus(chainAt(2001), store, cfg, tab.tabId);
+
+    expect(status.status).toBe("expired");
+    expect(status.warnings).toEqual([expect.stringMatching(/expired at ledger 2000/)]);
+  });
+});
+
+describe("pay_and_fetch output", () => {
+  const base = {
+    tab_id: "tab_1", url: "http://127.0.0.1:4021/haiku", http_status: 200, paid: true, replayed: false,
+    amount: "0.0001 TAB", token: "TAB, a test asset.", pay_to: "GSELLER", tx: "tx1", explorer: "https://x/tx1",
+    body: "line one\nline two", body_truncated: false,
+  };
+
+  it("drops the fields that only matter when unusual", () => {
+    const { summary, body } = presentPayResult(base);
+
+    expect(Object.keys(summary)).toEqual(["tab_id", "url", "paid", "amount", "token", "pay_to", "tx", "explorer"]);
+    expect(body).toBe("line one\nline two");
+  });
+
+  it("says so when a call was replayed, when the body was cut off, and when the status was not 2xx", () => {
+    const { summary } = presentPayResult({ ...base, replayed: true, body_truncated: true });
+    expect(summary).toMatchObject({ replayed: true, body_truncated: true, note: expect.stringMatching(/^No new payment was made/) });
+
+    const free = presentPayResult({ ...base, paid: false, http_status: 404, amount: undefined, tx: undefined, explorer: undefined, pay_to: undefined });
+    expect(free.summary).toEqual({ tab_id: "tab_1", url: base.url, paid: false, http_status: 404, token: base.token });
   });
 });

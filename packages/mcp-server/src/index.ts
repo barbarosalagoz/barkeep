@@ -22,9 +22,9 @@ import { z } from "zod";
 
 import { Chain, explorerTx } from "./chain.ts";
 import { keypairFromEnv } from "./keys.ts";
-import { createPayer } from "./pay.ts";
+import { createPayer, type PayResult } from "./pay.ts";
 import { Store } from "./state.ts";
-import { closeTab, describeExpiry, describeWindow, openTab, readSpend, tabStatus, withUnit, type CloseTabResult, type RuleListingKey, type TabConfig } from "./tabs.ts";
+import { closeTab, describeExpiry, describePayees, describeWindow, openTab, readSpend, tabStatus, withUnit, type CloseTabResult, type RuleListingKey, type TabConfig } from "./tabs.ts";
 import { loadDeployment } from "./deployment.ts";
 import { X402_NETWORK, smartAccountExactScheme } from "./x402Scheme.ts";
 
@@ -44,6 +44,35 @@ const failure = (error: unknown) => ({
   isError: true,
   content: [{ type: "text" as const, text: String((error as Error)?.message ?? error) }],
 });
+
+/**
+ * pay_and_fetch's result as the user reads it: the fields that matter every
+ * time, plus the ones that only matter when they are unusual.
+ *
+ *   replayed        only when true -- no new transaction appears, so it must say so
+ *   http_status     only when not 2xx; a normal success is implied by `paid`
+ *   body_truncated  only when true -- a cut-off body must not pass for the whole
+ *
+ * The body is returned apart, to be sent as plain text.
+ */
+export function presentPayResult(result: PayResult): { summary: Record<string, unknown>; body: string } {
+  const { body, replayed, http_status, body_truncated, ...rest } = result;
+  const summary: Record<string, unknown> = { tab_id: rest.tab_id, url: rest.url, paid: rest.paid };
+
+  if (replayed) {
+    summary.replayed = true;
+    summary.note =
+      "No new payment was made: this is the stored result of an earlier identical call (same tab, url, max_amount and request_id).";
+  }
+  if (http_status < 200 || http_status > 299) summary.http_status = http_status;
+  if (body_truncated) summary.body_truncated = true;
+
+  for (const key of ["amount", "token", "pay_to", "tx", "explorer"] as const) {
+    if (rest[key] !== undefined) summary[key] = rest[key];
+  }
+
+  return { summary, body };
+}
 
 /**
  * What the chain says about the agent key after a close, in one sentence. It
@@ -182,12 +211,10 @@ export function createServer(): McpServer {
           window: describeWindow(result.tab.window, result.tab.windowLedgers),
           expires: describeExpiry(result.expiryLedger, result.expiryLedger - result.tab.windowLedgers),
           context_rule_id: result.contextRuleId,
-          policy: cfg.policyContract,
           tx: result.tx,
           explorer: explorerTx(result.tx),
-          payee_enforcement: "none",
-          warning:
-            "The amount is capped on chain; the destination is not. Any address can be paid.",
+          // The standing caveat goes last: plain, present, not the headline.
+          payees: describePayees(result.tab),
         });
       } catch (error) {
         return failure(error);
@@ -232,10 +259,10 @@ export function createServer(): McpServer {
          * The resource body goes in its own content item, as plain text, so a
          * multi-line response reads as lines rather than an escaped JSON string.
          */
-        const { body, ...result } = await payer(tab, args);
+        const { summary, body } = presentPayResult(await payer(tab, args));
         return {
           content: [
-            { type: "text" as const, text: JSON.stringify(result, null, 2) },
+            { type: "text" as const, text: JSON.stringify(summary, null, 2) },
             ...(body ? [{ type: "text" as const, text: body }] : []),
           ],
         };
