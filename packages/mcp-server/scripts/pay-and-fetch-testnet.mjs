@@ -24,10 +24,12 @@
  *   BARKEEP_ADMIN_SECRET=$(stellar keys secret barkeep-testnet-admin) \
  *   BARKEEP_AGENT_SECRET=$(stellar keys secret barkeep-testnet-agent) \
  *   BARKEEP_SUBMITTER_SECRET=$(stellar keys secret barkeep-testnet-deployer) \
+ *   BARKEEP_FACILITATOR_SECRET=$(stellar keys secret barkeep-testnet-facilitator) \
  *   npx tsx scripts/pay-and-fetch-testnet.mjs
  *
- * The deployer also acts as the facilitator's fee payer. Secrets come from the
- * environment and are never written anywhere; the seller is a fresh throwaway.
+ * The facilitator pays settlement fees with its own key, never the deployer's
+ * that open_tab and close_tab submit with. Secrets come from the environment
+ * and are never written anywhere; the seller is a fresh throwaway.
  */
 import { mkdtempSync } from "node:fs";
 import { createServer as createHttpServer } from "node:http";
@@ -58,6 +60,8 @@ const horizon = new Horizon.Server("https://horizon-testnet.stellar.org");
 
 const agent = Keypair.fromSecret(process.env.BARKEEP_AGENT_SECRET);
 const submitter = Keypair.fromSecret(process.env.BARKEEP_SUBMITTER_SECRET);
+const facilitatorKp = Keypair.fromSecret(process.env.BARKEEP_FACILITATOR_SECRET);
+if (facilitatorKp.publicKey() === submitter.publicKey()) throw new Error("the facilitator must not share the submitter's key");
 
 const chain = new Chain(
   { rpcUrl: deployment.rpcUrl, networkPassphrase: NET, smartAccount: C.smartAccount.id, verifierEd25519: C.verifierEd25519.id },
@@ -76,7 +80,7 @@ const listen = (server) =>
 
 /* ---- Barkeep's facilitator, over HTTP ------------------------------------ */
 
-const facilitatorUrl = await listen(createHttpServer(facilitatorListener(createFacilitator(submitter.secret()))));
+const facilitatorUrl = await listen(createHttpServer(facilitatorListener(createFacilitator(facilitatorKp.secret()))));
 
 /* ---- a seller: fresh account, TAB trustline, two priced routes ----------- */
 
@@ -151,7 +155,7 @@ const call = async (name, args = {}) => {
 
 console.log(`state dir    ${process.env.BARKEEP_STATE_DIR}`);
 console.log(`account      ${C.smartAccount.id}`);
-console.log(`facilitator  ${facilitatorUrl} (fee payer ${submitter.publicKey()})`);
+console.log(`facilitator  ${facilitatorUrl} (fee payer ${facilitatorKp.publicKey()})`);
 console.log(`seller       ${sellerUrl} (payTo ${sellerKp.publicKey()})\n`);
 
 const opened = await call("open_tab", { limit: "0.0005", window: "PT15M" });
