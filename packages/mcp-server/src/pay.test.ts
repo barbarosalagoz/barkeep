@@ -182,6 +182,24 @@ describe("pay_and_fetch", () => {
     expect(createPayload).toHaveBeenCalledTimes(2);
   });
 
+  it("words a spending-limit refusal as the account's policy, with price against what is left", async () => {
+    const { createPayload, store, fetch } = setup("20000");
+    createPayload.mockRejectedValueOnce(new AccountRefusal("HostError ... Error(Contract, #3221) ..."));
+
+    const pay = createPayer({ store, fetch, createPayload, ...TOKEN_DEPS, remaining: async () => 4000n });
+    const message = await pay(tab, { url: URL, max_amount: "0.01" }).then(
+      () => "",
+      (e: Error) => e.message
+    );
+
+    expect(message).toBe(
+      "The smart account's on-chain spending-limit policy refused this payment: the price, 0.002 TAB, is more than " +
+        "the 0.0004 TAB left on this tab (Error(Contract, #3221), SpendingLimitExceeded: the tab's cap for its window " +
+        "would be exceeded). Nothing was sent or paid."
+    );
+    expect(message.match(/refused/g)).toHaveLength(1);
+  });
+
   it("treats a facilitator verify refusal as nothing paid", async () => {
     let n = 0;
     const { pay, store } = setup("1000", () => (n++ === 0 ? "invalid" : "settled"));

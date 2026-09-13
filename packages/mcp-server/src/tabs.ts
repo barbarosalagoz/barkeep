@@ -11,7 +11,7 @@
 import { Address, Keypair, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
 
 import type { Chain } from "./chain.ts";
-import type { Store, Tab } from "./state.ts";
+import type { Receipt, Store, Tab } from "./state.ts";
 import { rawEd25519Key } from "./keys.ts";
 
 /** Testnet closes a ledger roughly every 5 seconds. */
@@ -46,6 +46,33 @@ export function windowToLedgers(window: string): number {
 
   if (seconds <= 0) throw new Error(`window must be greater than zero; got "${window}"`);
   return Math.max(1, Math.ceil(seconds / SECONDS_PER_LEDGER));
+}
+
+/** Ledgers -> an ISO-8601 duration at SECONDS_PER_LEDGER, for tabs that predate storing `window`. */
+export function ledgersToWindow(ledgers: number): string {
+  let s = ledgers * SECONDS_PER_LEDGER;
+  const d = Math.floor(s / 86400);
+  s -= d * 86400;
+  const h = Math.floor(s / 3600);
+  s -= h * 3600;
+  const m = Math.floor(s / 60);
+  s -= m * 60;
+  const time = `${h ? `${h}H` : ""}${m ? `${m}M` : ""}${s ? `${s}S` : ""}`;
+  const iso = `P${d ? `${d}D` : ""}${time ? `T${time}` : ""}`;
+  return iso === "P" ? "PT0S" : iso;
+}
+
+/** "PT1H (720 ledgers)": the window as asked, and what the chain counts. */
+export const describeWindow = (window: string | undefined, ledgers: number): string =>
+  `${window ?? ledgersToWindow(ledgers)} (${ledgers} ledgers)`;
+
+/** "at ledger 4653477, in ~60 min (716 ledgers)", or how long ago it passed. */
+export function describeExpiry(expiryLedger: number, currentLedger: number): string {
+  const left = expiryLedger - currentLedger;
+  const minutes = Math.round((Math.abs(left) * SECONDS_PER_LEDGER) / 60);
+  return left >= 0
+    ? `at ledger ${expiryLedger}, in ~${minutes} min (${left} ledgers)`
+    : `at ledger ${expiryLedger}, ~${minutes} min ago (${-left} ledgers)`;
 }
 
 /** Decimal string in token units -> base units, without floating point. */
@@ -198,24 +225,42 @@ export async function openTab(
   return { tabId: tab.tabId, contextRuleId, expiryLedger, tx: result.hash!, tab };
 }
 
+/** snake_case, like every other tool's output. */
 export interface TabStatus {
-  tabId: string;
+  tab_id: string;
   status: "open" | "closed" | "expired";
   source: "chain";
   limit: string;
   spent: string;
   remaining: string;
   token: string;
-  windowLedgers: number;
-  expiryLedger: number;
-  currentLedger: number;
-  ledgersRemaining: number;
+  /** "PT1H (720 ledgers)" */
+  window: string;
+  /** "at ledger N, in ~M min (L ledgers)" */
+  expires: string;
+  current_ledger: number;
   constraints: {
     amount: { enforced: true; by: "on-chain policy"; limit: string; window_ledgers: number };
     payees: { enforced: false; reason: string } | { enforced: true; allowlist: string[] };
   };
   warnings: string[];
   receipts: unknown[];
+}
+
+/**
+ * A stored receipt as tab_status reports it: snake_case, and the amount joined
+ * with its asset. The log on disk keeps its own shape; this is presentation.
+ */
+export function reportReceipt(r: Receipt, cfg: Pick<TabConfig, "tokenSymbol">): Record<string, unknown> {
+  const out: Record<string, unknown> = { tab_id: r.tabId, at: r.at, kind: r.kind };
+  if (r.amount !== undefined) out.amount = `${r.amount} ${r.asset ?? cfg.tokenSymbol}`;
+  if (r.endpoint !== undefined) out.endpoint = r.endpoint;
+  if (r.to !== undefined) out.to = r.to;
+  if (r.tx !== undefined) out.tx = r.tx;
+  if (r.refusedBy !== undefined) out.refused_by = r.refusedBy;
+  if (r.reason !== undefined) out.reason = r.reason;
+  if (r.note !== undefined) out.note = r.note;
+  return out;
 }
 
 /** The policy's own record of a tab's cap and rolling-window spend, in base units. */
@@ -278,17 +323,16 @@ export async function tabStatus(
   }
 
   return {
-    tabId: tab.tabId,
+    tab_id: tab.tabId,
     status,
     source: "chain",
     limit: withUnit(limit, cfg),
     spent: withUnit(spent, cfg),
     remaining: withUnit(remaining, cfg),
     token: cfg.tokenDescription,
-    windowLedgers: periodLedgers,
-    expiryLedger: tab.expiryLedger,
-    currentLedger,
-    ledgersRemaining: Math.max(0, tab.expiryLedger - currentLedger),
+    window: describeWindow(tab.window, periodLedgers),
+    expires: describeExpiry(tab.expiryLedger, currentLedger),
+    current_ledger: currentLedger,
     constraints: {
       amount: {
         enforced: true,
@@ -303,10 +347,7 @@ export async function tabStatus(
       },
     },
     warnings,
-    // Receipts store amount and asset apart; the report joins them.
-    receipts: store.receipts(tab.tabId).map(({ amount, asset, ...rest }) =>
-      amount === undefined ? rest : { ...rest, amount: `${amount} ${asset ?? cfg.tokenSymbol}` }
-    ),
+    receipts: store.receipts(tab.tabId).map((r) => reportReceipt(r, cfg)),
   };
 }
 

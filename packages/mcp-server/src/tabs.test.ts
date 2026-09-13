@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Chain } from "./chain.ts";
 import { describeOtherRules } from "./index.ts";
 import { rawEd25519Key } from "./keys.ts";
-import { rulesListingKey, withUnit } from "./tabs.ts";
+import { describeExpiry, describeWindow, ledgersToWindow, rulesListingKey, withUnit } from "./tabs.ts";
 
 /*
  * close_tab's report on where the agent key still sits, offline. The live
@@ -111,5 +111,20 @@ describe("amounts", () => {
   it("always carry the token symbol", () => {
     expect(withUnit(1000n, { tokenDecimals: 7, tokenSymbol: "TAB" })).toBe("0.0001 TAB");
     expect(withUnit(0n, { tokenDecimals: 7, tokenSymbol: "TAB" })).toBe("0 TAB");
+  });
+});
+
+describe("time", () => {
+  it("shows the window as asked and in ledgers", () => {
+    expect(describeWindow("PT1H", 720)).toBe("PT1H (720 ledgers)");
+    expect(ledgersToWindow(720)).toBe("PT1H");
+    expect(ledgersToWindow(180)).toBe("PT15M");
+    expect(ledgersToWindow(17280)).toBe("P1D");
+    expect(describeWindow(undefined, 18)).toBe("PT1M30S (18 ledgers)");
+  });
+
+  it("shows expiry as a ledger and a rough time", () => {
+    expect(describeExpiry(4653477, 4652761)).toBe("at ledger 4653477, in ~60 min (716 ledgers)");
+    expect(describeExpiry(100, 112)).toBe("at ledger 100, ~1 min ago (12 ledgers)");
   });
 });

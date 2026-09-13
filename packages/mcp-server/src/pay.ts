@@ -56,6 +56,11 @@ export interface PayDeps {
    * smartAccountExactScheme behind an x402Client; tests substitute it.
    */
   createPayload: (tab: Tab, maxAmount: bigint, paymentRequired: PaymentRequired) => Promise<PaymentPayload>;
+  /**
+   * What is left under the tab's cap, in base units, read from the policy on
+   * chain. Only used to word a spending-limit refusal; optional.
+   */
+  remaining?: (tab: Tab) => Promise<bigint>;
 }
 
 export interface PayResult {
@@ -138,6 +143,40 @@ export function createPayer(deps: PayDeps) {
     body_truncated: r.bodyTruncated ?? false,
   });
 
+  /**
+   * One sentence for a refusal by the smart account: who refused, the numbers
+   * that made it refuse, and the contract error with its meaning.
+   */
+  async function accountRefusalMessage(error: AccountRefusal, tab: Tab, price: bigint): Promise<string> {
+    const nothing = "Nothing was sent or paid.";
+
+    switch (error.code) {
+      case "3221": {
+        const left = deps.remaining ? await deps.remaining(tab).catch(() => null) : null;
+        const numbers =
+          left === null
+            ? `the price, ${units(price)}, would take this tab over its cap`
+            : `the price, ${units(price)}, is more than the ${units(left)} left on this tab`;
+        return (
+          `The smart account's on-chain spending-limit policy refused this payment: ${numbers} ` +
+          `(Error(Contract, #3221), SpendingLimitExceeded: the tab's cap for its window would be exceeded). ${nothing}`
+        );
+      }
+      case "3002":
+        return (
+          `The smart account refused this payment on chain: this tab has expired ` +
+          `(Error(Contract, #3002), UnvalidatedContext: the tab's rule is past its expiry ledger). ${nothing}`
+        );
+      case "3000":
+        return (
+          `The smart account refused this payment on chain: this tab's rule no longer exists ` +
+          `(Error(Contract, #3000), ContextRuleNotFound: the tab was closed). ${nothing}`
+        );
+      default:
+        return `The smart account refused this payment on chain (${error.message}). ${nothing}`;
+    }
+  }
+
   async function pay(tab: Tab, args: PayArgs, maxAmount: bigint, key: string): Promise<PayResult> {
     const existing = deps.store.getPayment(key);
 
@@ -219,7 +258,10 @@ export function createPayer(deps: PayDeps) {
       payload = await deps.createPayload(tab, maxAmount, { ...paymentRequired, accepts: [chosen] });
     } catch (error) {
       // Nothing left this process: the account refused the signed entry, or signing failed.
-      const message = (error as Error).message;
+      const message =
+        error instanceof AccountRefusal
+          ? await accountRefusalMessage(error, tab, price)
+          : `The payment could not be signed: ${(error as Error).message}. Nothing was sent or paid.`;
       save({ status: "refused", error: message });
       trace(tab, args.url, {
         kind: "refused",
@@ -228,7 +270,7 @@ export function createPayer(deps: PayDeps) {
         to: chosen.payTo,
         reason: message,
       });
-      throw new Error(`Payment refused before it was sent: ${message}`, { cause: error });
+      throw new Error(message, { cause: error });
     }
 
     let second: Response;

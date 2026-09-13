@@ -24,7 +24,7 @@ import { Chain, explorerTx } from "./chain.ts";
 import { keypairFromEnv } from "./keys.ts";
 import { createPayer } from "./pay.ts";
 import { Store } from "./state.ts";
-import { closeTab, openTab, tabStatus, withUnit, type CloseTabResult, type RuleListingKey, type TabConfig } from "./tabs.ts";
+import { closeTab, describeExpiry, describeWindow, openTab, readSpend, tabStatus, withUnit, type CloseTabResult, type RuleListingKey, type TabConfig } from "./tabs.ts";
 import { loadDeployment } from "./deployment.ts";
 import { X402_NETWORK, smartAccountExactScheme } from "./x402Scheme.ts";
 
@@ -132,6 +132,10 @@ export function createServer(): McpServer {
       });
       return client.createPaymentPayload(paymentRequired);
     },
+    remaining: async (tab) => {
+      const { limit, spent } = await readSpend(chain(), cfg, tab);
+      return limit > spent ? limit - spent : 0n;
+    },
   });
 
   const server = new McpServer(
@@ -175,9 +179,10 @@ export function createServer(): McpServer {
           tab_id: result.tabId,
           limit: withUnit(BigInt(result.tab.limit), cfg),
           token: cfg.tokenDescription,
+          window: describeWindow(result.tab.window, result.tab.windowLedgers),
+          expires: describeExpiry(result.expiryLedger, result.expiryLedger - result.tab.windowLedgers),
           context_rule_id: result.contextRuleId,
           policy: cfg.policyContract,
-          expiry_ledger: result.expiryLedger,
           tx: result.tx,
           explorer: explorerTx(result.tx),
           payee_enforcement: "none",
@@ -223,7 +228,17 @@ export function createServer(): McpServer {
         const tab = args.tab_id ? store.getTab(args.tab_id) : store.currentTab();
         if (!tab) throw new Error(args.tab_id ? `no tab with id ${args.tab_id}` : "no open tab");
 
-        return text(await payer(tab, args));
+        /*
+         * The resource body goes in its own content item, as plain text, so a
+         * multi-line response reads as lines rather than an escaped JSON string.
+         */
+        const { body, ...result } = await payer(tab, args);
+        return {
+          content: [
+            { type: "text" as const, text: JSON.stringify(result, null, 2) },
+            ...(body ? [{ type: "text" as const, text: body }] : []),
+          ],
+        };
       } catch (error) {
         return failure(error);
       }

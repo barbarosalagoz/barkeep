@@ -149,8 +149,10 @@ await Promise.all([server.connect(b), client.connect(a)]);
 
 const call = async (name, args = {}) => {
   const r = await client.callTool({ name, arguments: args });
-  const body = r.content?.[0]?.text ?? "";
-  return r.isError ? { error: body } : JSON.parse(body);
+  const text = r.content?.[0]?.text ?? "";
+  if (r.isError) return { error: text };
+  // pay_and_fetch returns the resource body as a second, plain-text content item.
+  return r.content?.[1] ? { ...JSON.parse(text), body: r.content[1].text } : JSON.parse(text);
 };
 
 console.log(`state dir    ${process.env.BARKEEP_STATE_DIR}`);
@@ -175,7 +177,7 @@ try {
 
   const receipt = s1.receipts?.find((r) => r.kind === "payment" && r.tx === p1.tx);
   check(
-    Boolean(receipt && receipt.amount === "0.0001 TAB" && receipt.endpoint === `${sellerUrl}/cheap` && receipt.at && receipt.tabId === opened.tab_id),
+    Boolean(receipt && receipt.amount === "0.0001 TAB" && receipt.endpoint === `${sellerUrl}/cheap` && receipt.at && receipt.tab_id === opened.tab_id),
     "the receipt log has tx, amount, endpoint, timestamp and tab id",
     JSON.stringify(receipt)
   );
@@ -236,7 +238,7 @@ try {
 
   const refusal = s2.receipts.find((r) => r.kind === "refused" && r.endpoint === `${sellerUrl}/dear`);
   check(
-    Boolean(refusal && refusal.refusedBy === "on-chain policy" && /#3221/.test(refusal.reason) && refusal.amount === "0.00045 TAB"),
+    Boolean(refusal && refusal.refused_by === "on-chain policy" && /#3221/.test(refusal.reason) && refusal.amount === "0.00045 TAB"),
     "the refusal is on the bill, with its reason",
     JSON.stringify(refusal)
   );
