@@ -103,6 +103,73 @@
         "successful": false,
         "error": "Error(Contract, #3000) ContextRuleNotFound"
       }
+    },
+    "x402Spike": {
+      "script": "packages/mcp-server/scripts/x402-spike-testnet.mjs",
+      "question": "Can an x402 exact payment be made FROM the smart account, authorised by the agent session key under a tab rule, and settled by a facilitator?",
+      "answer": "Yes with a self-hosted @x402/stellar 2.25.0 facilitator (fee ceiling raised, event check narrowed to the asset contract). No through the public facilitator https://x402.org/facilitator.",
+      "note": "Seller was a local x402 v2 server on 127.0.0.1; seller payTo and the T0 payer were fresh friendbot accounts with a TAB trustline. Successful flags, ledgers and fees cross-checked on Horizon; T4's auth entry and events read back from RPC.",
+      "seller": "GA5SX5BBXI6N6TA3ZWVX5QDRISXWXHIYUDCHG6LKGIY6RUFAMS65AGX2",
+      "price": "1000",
+      "openTab": {
+        "tx": "cd771493521a85e1472fedc0d058fd5a13fc4eed3d913503ec1233028723ec91",
+        "ledger": 4649841,
+        "successful": true,
+        "contextRuleId": 11
+      },
+      "T0_controlClassicPayerPublicFacilitator": {
+        "payer": "GBHLOBC7UGNBD6Y7QPMOJM76NPMFHOZBO2A4N2WLOBT6P4ZN5R67QG5I",
+        "client": "@x402/stellar ExactStellarScheme + createEd25519Signer (stock)",
+        "facilitator": "https://x402.org/facilitator",
+        "tx": "8cdcd81b9e30905fe175f8d1d827906031893cadc1964a2c11881be428a108e6",
+        "ledger": 4649840,
+        "successful": true,
+        "feeCharged": 23039,
+        "envelope": "fee bump: inner source GC6CSXBV4C6RL3HEDTW57KXYXSSXKAWKGYDEOSATXM3XNKXSR2VRYN3K, fee source GC5OLUZ4WANPN6VT7YGTK2SRMZG762KOVKJXHWIO4K57UBASO2FMNRET (both listed by the facilitator's /supported)"
+      },
+      "T1_stockClientSmartAccountPayer": {
+        "client": "@x402/stellar ExactStellarScheme, signer.address = smart account",
+        "result": "threw before any request: \"Failed to create payment payload: invalid version byte. expected 48, got 16\"",
+        "cause": "AssembledTransaction.signAuthEntries passes the signature to authorizeEntry as raw bytes, which takes the classic-account branch and decodes the C-address as an ed25519 key"
+      },
+      "T2_signAsClientPublicFacilitator": {
+        "facilitator": "https://x402.org/facilitator",
+        "verify": {
+          "isValid": false,
+          "invalidReason": "invalid_exact_stellar_payload_fee_exceeds_maximum",
+          "invalidMessage": "simulation-derived fee 324039 stroops exceeds ceiling 50000 stroops"
+        },
+        "clientSimulation": {
+          "authEntries": 1,
+          "subInvocations": 0,
+          "minResourceFee": 323939,
+          "contractEvents": ["spending_limit_enforced (policy CBEILTNY...)", "transfer (token CBXLQ3TC...)"]
+        }
+      },
+      "T3_localFacilitatorFeeCeilingOnly": {
+        "facilitator": "@x402/stellar 2.25.0 ExactStellarScheme in-process, maxTransactionFeeStroops 2000000",
+        "verify": {
+          "isValid": false,
+          "invalidReason": "invalid_exact_stellar_payload_event_not_transfer"
+        }
+      },
+      "T4_localFacilitatorFeeCeilingAndAssetEvents": {
+        "facilitator": "same, plus validateSimulationEvents given only events emitted by the asset contract",
+        "tx": "c02f9035c0eb0250a619633c192aca4e43996a89dad927f7236f7508aab64aaf",
+        "ledger": 4649844,
+        "successful": true,
+        "feeCharged": 276476,
+        "submitter": "GAM225BSUJZCO3GHNOSW3APCUI5XNX2ECN27A7CAMSLL3EHGEYMWLGHT",
+        "authEntryAddress": "CCAO6UVMZ2JGUAGIQKMVHXKWKD7TZKW2YP77M2NK56MWL6LC66ZZ3FLH",
+        "authPayloadContextRuleIds": [11],
+        "events": ["spending_limit_enforced amount 1000", "transfer CCAO6UVM... -> GA5SX5BB... 1000"]
+      },
+      "closeTab": {
+        "tx": "6a4b722c5e835ea0925d8bdcc371d95b7e3d6ed2dd23c569d0feaa4e919522d8",
+        "ledger": 4649845,
+        "successful": true,
+        "finalSpent": "0.0001"
+      }
     }
   }
 }
