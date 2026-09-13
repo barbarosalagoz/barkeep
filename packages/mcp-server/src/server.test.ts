@@ -88,15 +88,31 @@ describe("the server as a host sees it", () => {
     expect((openTab.inputSchema.required as string[]) ?? []).not.toContain("payees");
   });
 
-  it("reports pay_and_fetch as not implemented rather than pretending", async () => {
+  /*
+   * The description is what the agent reads. It must not let anyone believe
+   * Barkeep pays any x402 endpoint: the public facilitator refuses
+   * smart-account payers (deployments/testnet.json, doneTests.x402Spike).
+   */
+  it("says plainly that pay_and_fetch does not pay arbitrary x402 endpoints, and why", async () => {
+    const { client } = await connected();
+    const { tools } = await client.listTools();
+    const pay = tools.find((t) => t.name === "pay_and_fetch")!;
+
+    expect(pay.description).toMatch(/does NOT pay arbitrary x402 endpoints/);
+    expect(pay.description).toMatch(/facilitator accepts smart-account payers/);
+    expect(pay.description).toMatch(/event check/);
+    expect((pay.inputSchema.required as string[]).sort()).toEqual(["max_amount", "url"]);
+  });
+
+  it("refuses to pay without an open tab, before touching the network", async () => {
     const { client } = await connected();
     const result = await client.callTool({
       name: "pay_and_fetch",
-      arguments: { url: "https://example.com", max_amount: "0.1" },
+      arguments: { url: "http://127.0.0.1:9/never", max_amount: "0.1" },
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toMatch(/not implemented/);
+    expect(JSON.stringify(result.content)).toMatch(/no open tab/);
   });
 });
 

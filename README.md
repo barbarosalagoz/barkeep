@@ -12,8 +12,12 @@ Home: **[barkeep.dev](https://barkeep.dev)**
 > foundation of that idea: a deployed Soroban **Payment Tracker** escrow
 > contract and a multi-wallet React dApp that drives it end to end on Stellar
 > Testnet. The tab-and-agent model described above is the v1 design, specified
-> in [docs/ARCHITECTURE-v2.md](docs/ARCHITECTURE-v2.md); it is a plan, not yet
-> built. Everything documented below is what is live now.
+> in [docs/ARCHITECTURE-v2.md](docs/ARCHITECTURE-v2.md). Part of it is now
+> built and runs on Testnet: the MCP server in `packages/mcp-server`, which
+> opens a tab, pays for HTTP requests against it, reports it and closes it --
+> see [The tab (MCP server)](#the-tab-mcp-server-testnet), including what it
+> **cannot** pay yet. The payee allowlist, the bill dashboard and plugin
+> packaging are still a plan.
 >
 > The project was previously named **PromptRail**. Its Stellar Journey to
 > Mastery — Yellow Belt submission record is preserved under the old name in
@@ -73,6 +77,72 @@ Verified production flow:
 - ✅ Stellar Testnet submission
 - ✅ Transaction confirmation
 - ✅ Transaction hash and explorer link
+
+---
+
+## The tab (MCP server, Testnet)
+
+`packages/mcp-server` is a local stdio MCP server for Claude Code. A tab is an
+on-chain context rule on a smart account built on OpenZeppelin's
+`stellar-accounts` library: the agent's session key as its only signer, a
+spending-limit policy, and an expiry. The cap is enforced by that policy on
+chain, not by the server. None of these contracts is audited; see
+[docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
+
+| Tool | What it does |
+| --- | --- |
+| `open_tab` | Adds the agent rule with a cap and a window |
+| `pay_and_fetch` | Fetches a URL; on an x402 402 challenge, pays it from the tab |
+| `tab_status` | Limit, spent and remaining, read from the chain, plus receipts |
+| `close_tab` | Removes the rule, revoking the session key |
+
+### Who `pay_and_fetch` can pay -- read this first
+
+**It pays sellers whose x402 facilitator accepts a smart-account payer. It
+does not pay arbitrary x402 endpoints today.**
+
+An x402 seller hands payment verification to a facilitator. The public one,
+`https://x402.org/facilitator`, refuses every payment from a Barkeep tab, for
+two reasons measured on Testnet (`deployments/testnet.json`,
+`doneTests.x402Spike`):
+
+1. **Its event check.** Upstream `@x402/stellar` rejects any contract event
+   that is not a `transfer`. The spending-limit policy emits
+   `spending_limit_enforced` on every capped spend, so the thing that makes a
+   tab a tab is what gets refused.
+2. **Its fee ceiling.** 50,000 stroops by default; a smart-account transfer
+   simulated at 324,039.
+
+A seller like that answers the paid request with a refusal and nothing is
+paid. `packages/mcp-server/src/facilitator.ts` is the same upstream
+facilitator with exactly those two checks relaxed, each commented with the
+upstream check it relaxes; a seller that points at it can be paid. Until
+upstream accepts smart-account payers, that is the reach of this tool.
+
+Per call, `max_amount` caps the price and identical calls (same tab, URL,
+`max_amount` and optional `request_id`) pay once. Both are enforced by the
+server; the tab's cap is enforced on chain. The money tools carry the
+`anthropic/requiresUserInteraction` flag, so the host asks on every call.
+Every payment appends a receipt -- tx hash, amount, endpoint, timestamp, tab
+id -- to the state directory's `receipts.jsonl`.
+
+### Run it
+
+```sh
+# the facilitator a seller points at (fees are paid by this key)
+BARKEEP_FACILITATOR_SECRET=$(stellar keys secret barkeep-testnet-deployer) \
+  npx tsx packages/mcp-server/src/facilitator.ts        # http://127.0.0.1:4020
+
+# the live done-tests: pay, over-cap refusal, idempotency
+cd packages/mcp-server
+BARKEEP_ADMIN_SECRET=$(stellar keys secret barkeep-testnet-admin) \
+BARKEEP_AGENT_SECRET=$(stellar keys secret barkeep-testnet-agent) \
+BARKEEP_SUBMITTER_SECRET=$(stellar keys secret barkeep-testnet-deployer) \
+npx tsx scripts/pay-and-fetch-testnet.mjs
+```
+
+Results, with transaction hashes, are recorded under `doneTests.payAndFetch`
+in `deployments/testnet.json`.
 
 ---
 

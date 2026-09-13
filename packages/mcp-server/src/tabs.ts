@@ -45,18 +45,18 @@ export function windowToLedgers(window: string): number {
 }
 
 /** Decimal string in token units -> base units, without floating point. */
-export function toBaseUnits(amount: string, decimals: number): bigint {
+export function toBaseUnits(amount: string, decimals: number, label = "limit"): bigint {
   const m = /^(\d+)(?:\.(\d+))?$/.exec(amount.trim());
 
-  if (!m) throw new Error(`limit must be a positive decimal string; got "${amount}"`);
+  if (!m) throw new Error(`${label} must be a positive decimal string; got "${amount}"`);
 
   const frac = (m[2] ?? "").padEnd(decimals, "0");
   if (frac.length > decimals) {
-    throw new Error(`limit has more than ${decimals} decimal places: "${amount}"`);
+    throw new Error(`${label} has more than ${decimals} decimal places: "${amount}"`);
   }
 
   const value = BigInt(m[1] + frac);
-  if (value <= 0n) throw new Error(`limit must be greater than zero; got "${amount}"`);
+  if (value <= 0n) throw new Error(`${label} must be greater than zero; got "${amount}"`);
   return value;
 }
 

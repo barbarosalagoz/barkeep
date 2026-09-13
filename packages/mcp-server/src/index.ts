@@ -17,13 +17,16 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { x402Client } from "@x402/core/client";
 import { z } from "zod";
 
 import { Chain, explorerTx } from "./chain.ts";
 import { keypairFromEnv } from "./keys.ts";
+import { createPayer } from "./pay.ts";
 import { Store } from "./state.ts";
 import { closeTab, openTab, tabStatus, type TabConfig } from "./tabs.ts";
 import { loadDeployment } from "./deployment.ts";
+import { X402_NETWORK, smartAccountExactScheme } from "./x402Scheme.ts";
 
 /*
  * Money tools carry requiresUserInteraction, which forces a decision on every
@@ -67,6 +70,34 @@ export function createServer(): McpServer {
       },
       keypairFromEnv("BARKEEP_SUBMITTER_SECRET")
     );
+
+  const payer = createPayer({
+    store,
+    fetch: globalThis.fetch,
+    tokenDecimals: cfg.tokenDecimals,
+    createPayload: async (tab, maxAmount, paymentRequired) => {
+      const agent = keypairFromEnv("BARKEEP_AGENT_SECRET");
+      if (agent.publicKey() !== tab.agentPublicKey) {
+        throw new Error(`${tab.tabId} was opened for agent ${tab.agentPublicKey}, not ${agent.publicKey()}`);
+      }
+
+      const scheme = smartAccountExactScheme(chain(), {
+        agent,
+        contextRuleId: tab.contextRuleId,
+        token: tab.token,
+        maxAmount,
+      });
+
+      // x402's own spend controls, set to the same per-call cap: a second, independent check.
+      const client = x402Client.fromConfig({
+        schemes: [{ network: X402_NETWORK, client: scheme }],
+        spendControls: {
+          allowedAssets: [{ network: X402_NETWORK, asset: tab.token, maxAmountPerPayment: maxAmount.toString() }],
+        },
+      });
+      return client.createPaymentPayload(paymentRequired);
+    },
+  });
 
   const server = new McpServer(
     { name: "barkeep", version: "0.1.0" },
@@ -127,22 +158,39 @@ export function createServer(): McpServer {
     {
       title: "Pay for an HTTP resource",
       description:
-        "Fetch a paid HTTP resource, settling an x402 challenge against the tab. " +
-        "Not implemented yet.",
+        "Fetch a URL; if it answers 402 with an x402 exact challenge on stellar:testnet in the " +
+        "tab's token, pay it from the tab's smart account and return the paid response. " +
+        "WHO THIS CAN PAY: only sellers whose x402 facilitator accepts smart-account payers, " +
+        "such as Barkeep's own facilitator. It does NOT pay arbitrary x402 endpoints today: the " +
+        "public facilitator (x402.org) refuses smart-account payments, because its event check " +
+        "rejects the spending-limit policy's on-chain event and its fee ceiling is below what a " +
+        "smart-account transfer costs. Such sellers refuse the payment and nothing is paid. " +
+        "max_amount caps this one call; the tab's cap is enforced on chain. Identical calls " +
+        "(same tab, url, max_amount and request_id) pay once and return the stored result.",
       inputSchema: {
         url: z.string().describe("The resource to fetch"),
-        max_amount: z.string().describe("Most to pay for this one request, in token units"),
+        max_amount: z.string().describe('Most to pay for this one request, in token units, e.g. "0.01"'),
         tab_id: z.string().optional().describe("Defaults to the current tab"),
+        request_id: z
+          .string()
+          .optional()
+          .describe(
+            "Idempotency discriminator. Omit it and a repeat of the same call returns the first " +
+              "result without paying again; pass a new value to pay the same URL again deliberately."
+          ),
       },
       _meta: REQUIRES_INTERACTION,
     },
-    async () =>
-      failure(
-        new Error(
-          "pay_and_fetch is not implemented. The x402 client (@x402/stellar, @x402/fetch) " +
-            "is Week 3 in docs/ARCHITECTURE-v2.md §12. open_tab, tab_status and close_tab work."
-        )
-      )
+    async (args) => {
+      try {
+        const tab = args.tab_id ? store.getTab(args.tab_id) : store.currentTab();
+        if (!tab) throw new Error(args.tab_id ? `no tab with id ${args.tab_id}` : "no open tab");
+
+        return text(await payer(tab, args));
+      } catch (error) {
+        return failure(error);
+      }
+    }
   );
 
   server.registerTool(

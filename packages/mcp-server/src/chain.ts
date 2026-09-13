@@ -67,6 +67,10 @@ export class Chain {
     return this.cfg.networkPassphrase;
   }
 
+  get smartAccount(): string {
+    return this.cfg.smartAccount;
+  }
+
   async latestLedger(): Promise<number> {
     return (await this.server.getLatestLedger()).sequence;
   }
@@ -88,8 +92,15 @@ export class Chain {
     return sim.result?.retval ? scValToNative(sim.result.retval) : undefined;
   }
 
-  /** The signer callback: sign the auth digest, not the raw payload. */
-  private signAs(kp: Keypair, contextRuleId: number) {
+  /**
+   * The signer callback: sign the auth digest, not the raw payload.
+   *
+   * Public because the x402 client scheme (x402Scheme.ts) authorises its auth
+   * entry through exactly this path. The stock @x402/stellar client cannot:
+   * it hands the SDK raw signature bytes, which become a classic-account
+   * signature and fail on a C-address (deployments/testnet.json, x402Spike T1).
+   */
+  signAs(kp: Keypair, contextRuleId: number) {
     const signer = {
       kind: "external" as const,
       verifier: this.cfg.verifierEd25519,

@@ -14,9 +14,10 @@
  * (tabs outlive a reboot; a tab whose record vanished is a live on-chain rule
  * nobody can close by id).
  *
- * WHAT IT HOLDS: tab metadata and an append-only receipt log. Public values
- * only -- contract ids, ledger numbers, amounts, transaction hashes, and the
- * agent's PUBLIC key.
+ * WHAT IT HOLDS: tab metadata, an append-only receipt log, and the payment
+ * records pay_and_fetch uses for idempotency. Public values only -- contract
+ * ids, ledger numbers, amounts, transaction hashes, the agent's PUBLIC key, and
+ * the (truncated) bodies of resources already paid for.
  *
  * WHAT IT NEVER HOLDS: key material of any kind. Signing keys come from the
  * environment (see keys.ts). Nothing in this module writes a secret, and
@@ -64,7 +65,37 @@ export interface Receipt {
   amount?: string;
   to?: string;
   tx?: string;
+  /** The URL paid for, on a payment receipt. */
+  endpoint?: string;
   note?: string;
+}
+
+/**
+ * One pay_and_fetch request, keyed for idempotency.
+ *
+ *   pending     the payment signature is about to be, or has been, sent
+ *   settled     the seller returned a settlement with a transaction hash
+ *   refused     refused before any money could move; safe to try again
+ *   unconfirmed a signature went out and no settlement came back; NOT retried
+ *               automatically, because it may yet have settled
+ */
+export interface PaymentRecord {
+  key: string;
+  tabId: string;
+  url: string;
+  maxAmount: string;
+  requestId: string | null;
+  status: "pending" | "settled" | "refused" | "unconfirmed";
+  startedAt: string;
+  updatedAt: string;
+  /** Base units, as the seller asked. */
+  amount?: string;
+  payTo?: string;
+  tx?: string;
+  httpStatus?: number;
+  body?: string;
+  bodyTruncated?: boolean;
+  error?: string;
 }
 
 export function stateDir(): string {
@@ -82,11 +113,13 @@ export class Store {
   readonly dir: string;
   private readonly tabsFile: string;
   private readonly receiptsFile: string;
+  private readonly paymentsFile: string;
 
   constructor(dir: string = stateDir()) {
     this.dir = dir;
     this.tabsFile = join(dir, "tabs.json");
     this.receiptsFile = join(dir, "receipts.jsonl");
+    this.paymentsFile = join(dir, "payments.json");
     mkdirSync(dir, { recursive: true });
   }
 
@@ -131,6 +164,25 @@ export class Store {
     const all = lines.map((l) => JSON.parse(l) as Receipt);
     return tabId ? all.filter((r) => r.tabId === tabId) : all;
   }
+
+  private payments(): Record<string, PaymentRecord> {
+    try {
+      return JSON.parse(readFileSync(this.paymentsFile, "utf8")) as Record<string, PaymentRecord>;
+    } catch {
+      return {};
+    }
+  }
+
+  getPayment(key: string): PaymentRecord | undefined {
+    return this.payments()[key];
+  }
+
+  putPayment(record: PaymentRecord): void {
+    const all = this.payments();
+
+    all[record.key] = record;
+    writeFileSync(this.paymentsFile, `${JSON.stringify(all, null, 2)}\n`);
+  }
 }
 
 /**
@@ -146,5 +198,5 @@ export function storedText(dir: string): string {
     }
   };
 
-  return `${read("tabs.json")}\n${read("receipts.jsonl")}`;
+  return `${read("tabs.json")}\n${read("receipts.jsonl")}\n${read("payments.json")}`;
 }
