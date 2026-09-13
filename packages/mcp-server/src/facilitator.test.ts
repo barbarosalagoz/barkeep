@@ -1,9 +1,13 @@
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+
 import { Keypair, StrKey, nativeToScVal, xdr } from "@stellar/stellar-sdk";
+import type { x402Facilitator } from "@x402/core/facilitator";
 import { createEd25519Signer } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/facilitator";
 import { describe, expect, it } from "vitest";
 
-import { MAX_TRANSACTION_FEE_STROOPS, smartAccountFacilitatorScheme } from "./facilitator.ts";
+import { MAX_TRANSACTION_FEE_STROOPS, facilitatorListener, smartAccountFacilitatorScheme } from "./facilitator.ts";
 
 /*
  * The two relaxations, offline. Relaxation 2 reaches a TypeScript-private
@@ -82,5 +86,36 @@ describe("the facilitator's relaxations", () => {
     );
     // A transfer of some other token is not the payment, and does not stand in for it.
     expect(run([transfer(OTHER_TOKEN, 1000n)])).toBe("invalid_exact_stellar_payload_no_transfer_events");
+  });
+});
+
+describe("the facilitator's HTTP listener", () => {
+  it("runs settlements one at a time, so they cannot race for the signer's sequence number", async () => {
+    let active = 0;
+    let peak = 0;
+    const fake = {
+      getSupported: () => ({ kinds: [], extensions: [], signers: {} }),
+      verify: async () => ({ isValid: true }),
+      settle: async () => {
+        active++;
+        peak = Math.max(peak, active);
+        await new Promise((r) => setTimeout(r, 50));
+        active--;
+        return { success: true, transaction: "tx", network: "stellar:testnet" };
+      },
+    } as unknown as x402Facilitator;
+
+    const server: Server = createServer(facilitatorListener(fake));
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/settle`;
+    const body = JSON.stringify({ paymentPayload: {}, paymentRequirements: {} });
+
+    const results = await Promise.all(
+      [1, 2, 3].map(() => fetch(url, { method: "POST", body }).then((r) => r.json() as Promise<{ success: boolean }>))
+    );
+    server.close();
+
+    expect(results.every((r) => r.success)).toBe(true);
+    expect(peak).toBe(1);
   });
 });

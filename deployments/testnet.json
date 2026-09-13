@@ -244,6 +244,55 @@
         "ledger": 4650042,
         "successful": true,
         "finalSpent": "0.0002"
+      },
+      "rerunWithFacilitatorKey": {
+        "note": "Re-run 2026-09-13 after the facilitator moved to its own key (fee payer GACGJIUB...). 12/12. The record above is the original run.",
+        "P1": "6a724bf616079a7bb9c22e49b22173b7a7909ea77dde10903366bf426a008401",
+        "P3concurrent": "24933a37fa4e0943b436e36ad752eb0db2d821b069f69530504cf234894314c9",
+        "P2forced": "23681ac16a1246a8401be0ce33f259c101d51b6bb625a2187806cf6d31e1067f",
+        "openTab": "e1f3e2fe38621e3e6f315117d96401772b24a53f33f35de99ecf857549efe097",
+        "closeTab": "b76b687889b4b0295266fad17a5236c09af2f70e3f3915857b2dfd9a441cf1d8"
+      }
+    },
+    "demoStack": {
+      "script": "packages/mcp-server/scripts/demo-stack-testnet.mjs",
+      "note": "bin/barkeep-mcp over stdio -> src/seller.ts (persistent) -> src/facilitator.ts (own key) -> Testnet. 9/9. Sources and successful flags cross-checked on Horizon.",
+      "openTab": {
+        "tx": "d69255b2a60e97f70f2757168f7bfa0aad34e81c61283380c962af70e1c239cc",
+        "ledger": 4652370,
+        "successful": true,
+        "source": "deployer",
+        "contextRuleId": 14
+      },
+      "haiku": {
+        "tx": "d622b81a1066dd4054276ffa90ccbf37b76819752a4f4ddb87b2a5a8ab0ea8a8",
+        "ledger": 4652371,
+        "successful": true,
+        "source": "facilitator"
+      },
+      "twoUrlsAtOnce": {
+        "forecast": {
+          "tx": "b874b310bed762d431418687cc23805e5f90fdb4e3ea420b33d9d5a11be94c6c",
+          "ledger": 4652373,
+          "successful": true,
+          "source": "facilitator"
+        },
+        "haiku": {
+          "tx": "a8cb4b48edbbf44297ccdf40bf1c7639b9ee2eb5a8ae7d3dcc6260f4497c7374",
+          "ledger": 4652374,
+          "successful": true,
+          "source": "facilitator"
+        },
+        "note": "settled in consecutive ledgers: the facilitator serialises settlements"
+      },
+      "datasetOverMaxAmount": "Price 0.002 exceeds max_amount 0.001. Nothing was signed or paid.",
+      "tabStatusSpent": "0.00045",
+      "paymentReceipts": 3,
+      "closeTab": {
+        "tx": "0f2fca5e9b73af5ab5f01bce12b85e97a69a207de2967976351775914e03fe33",
+        "ledger": 4652376,
+        "successful": true,
+        "source": "deployer"
       }
     }
   },
@@ -304,6 +353,17 @@
           "instance": 7762685
         }
       }
+    }
+  },
+  "facilitatorSigner": "GACGJIUBFQ2O7RYX26QVGALAQG5BQ6DQI6JNHJ6TPOZE6MHJD7AM5OVK",
+  "demoSeller": {
+    "account": "GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7",
+    "identity": "barkeep-testnet-seller",
+    "trustlineTx": "e1af22935a57d5348571983e7de6fd6cff00263f56542259327d3c92b446744f",
+    "routes": {
+      "/haiku": "1000",
+      "/forecast": "2500",
+      "/dataset": "20000"
     }
   }
 }

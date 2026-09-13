@@ -33,6 +33,8 @@ import { x402Facilitator } from "@x402/core/facilitator";
 import { createEd25519Signer } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/facilitator";
 
+import { loadDeployment } from "./deployment.ts";
+import { keypairFromEnv } from "./keys.ts";
 import { X402_NETWORK } from "./x402Scheme.ts";
 
 /*
@@ -118,6 +120,16 @@ const readJson = async (req: IncomingMessage): Promise<Record<string, never>> =>
 };
 
 export function facilitatorListener(facilitator: x402Facilitator): RequestListener {
+  /*
+   * Settlements run one at a time. Upstream settle() loads the signer's
+   * sequence number and submits without any lock, so two settlements landing
+   * together build the same sequence number and the second is rejected
+   * (settle_exact_stellar_transaction_submission_failed) -- which pay_and_fetch
+   * must then treat as an unknown outcome. Serialising here costs a few seconds
+   * under parallel payments and removes that failure.
+   */
+  let settling: Promise<unknown> = Promise.resolve();
+
   return async (req, res) => {
     const reply = (status: number, body: unknown) => {
       res.writeHead(status, { "content-type": "application/json" });
@@ -129,11 +141,11 @@ export function facilitatorListener(facilitator: x402Facilitator): RequestListen
 
       if (req.method === "POST" && (req.url === "/verify" || req.url === "/settle")) {
         const { paymentPayload, paymentRequirements } = await readJson(req);
-        const result =
-          req.url === "/verify"
-            ? await facilitator.verify(paymentPayload, paymentRequirements)
-            : await facilitator.settle(paymentPayload, paymentRequirements);
-        return reply(200, result);
+        if (req.url === "/verify") return reply(200, await facilitator.verify(paymentPayload, paymentRequirements));
+
+        const settled = settling.then(() => facilitator.settle(paymentPayload, paymentRequirements));
+        settling = settled.catch(() => undefined);
+        return reply(200, await settled);
       }
 
       reply(404, { error: "not found" });
@@ -143,10 +155,22 @@ export function facilitatorListener(facilitator: x402Facilitator): RequestListen
   };
 }
 
-/* Entry point: BARKEEP_FACILITATOR_SECRET pays fees; it authorises no payment. */
+/*
+ * Entry point. BARKEEP_FACILITATOR_SECRET pays settlement fees and authorises no
+ * payment. It must not be the key the MCP server submits open_tab and
+ * close_tab with: both would draw on one sequence number, and a settlement
+ * racing an open_tab fails one of them. barkeep-testnet-facilitator in the
+ * Stellar CLI's key store is the intended key.
+ */
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()!)) {
   const secret = process.env.BARKEEP_FACILITATOR_SECRET;
-  if (!secret) throw new Error("BARKEEP_FACILITATOR_SECRET is not set");
+  if (!secret) throw new Error("BARKEEP_FACILITATOR_SECRET is not set; e.g. $(stellar keys secret barkeep-testnet-facilitator)");
+
+  const signer = keypairFromEnv("BARKEEP_FACILITATOR_SECRET").publicKey();
+  const submitter = process.env.BARKEEP_SUBMITTER_SECRET ? keypairFromEnv("BARKEEP_SUBMITTER_SECRET").publicKey() : null;
+  if (signer === loadDeployment().deployer || signer === submitter) {
+    throw new Error(`refusing to run the facilitator on ${signer}: it is the key open_tab and close_tab submit with`);
+  }
 
   const port = Number(process.env.BARKEEP_FACILITATOR_PORT ?? 4020);
   createServer(facilitatorListener(createFacilitator(secret))).listen(port, "127.0.0.1", () =>

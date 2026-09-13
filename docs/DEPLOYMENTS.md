@@ -36,6 +36,19 @@ The Testnet deployer is a Stellar CLI identity:
 | Public key | `GAM225BSUJZCO3GHNOSW3APCUI5XNX2ECN27A7CAMSLL3EHGEYMWLGHT` |
 | Secret stored at | `~/.config/stellar/identity/barkeep-testnet-deployer.toml` |
 
+The other Testnet identities, in the same store:
+
+| Identity name | Public key | Used by |
+| --- | --- | --- |
+| `barkeep-testnet-admin` | `GAPL4FFWCJ7TLUYU6USLKLXEFR7QIFVQ3XCEVTKO5MNDBO4IQYV5NK44` | open_tab / close_tab, the rule-0 signer |
+| `barkeep-testnet-agent` | `GDUQYLCSWA3CTGCK7XHAW622QRX54Q3FZQWOYUICUNLZZQOHCOXQD5TS` | the tab's session key |
+| `barkeep-testnet-facilitator` | `GACGJIUBFQ2O7RYX26QVGALAQG5BQ6DQI6JNHJ6TPOZE6MHJD7AM5OVK` | pays x402 settlement fees; never the deployer |
+| `barkeep-testnet-seller` | `GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7` | the demo seller's payTo; holds a TAB trustline |
+
+`packages/mcp-server/bin/barkeep-mcp` reads admin, agent and deployer from
+this store each time Claude Code launches the server, so the MCP registration
+holds a path and no secret.
+
 That path is the Stellar CLI's own config directory (`$XDG_CONFIG_HOME/stellar`,
 falling back to `~/.config/stellar`). It is outside the repository entirely, so
 there is no gitignore rule to get wrong and no way for `git add` to reach it —
@@ -45,10 +58,12 @@ which is the point of using the CLI's store rather than a dotfile in the tree.
 `secrets/` directory, so that a key pasted into the working tree by mistake is
 not staged. That is a backstop, not the mechanism.
 
-To recreate the deployer on another machine:
+To recreate the identities on another machine:
 
 ```sh
 stellar keys generate barkeep-testnet-deployer --network testnet --fund
+stellar keys generate barkeep-testnet-facilitator --network testnet --fund
+stellar keys generate barkeep-testnet-seller --network testnet --fund
 ```
 
 It is a throwaway Testnet account funded by Friendbot. If it is lost, generate

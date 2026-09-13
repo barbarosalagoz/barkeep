@@ -126,23 +126,48 @@ server; the tab's cap is enforced on chain. The money tools carry the
 Every payment appends a receipt -- tx hash, amount, endpoint, timestamp, tab
 id -- to the state directory's `receipts.jsonl`.
 
-### Run it
+### Run the demo stack
+
+Three processes, keys read from the Stellar CLI key store, never from a file
+in the repo or from Claude Code's configuration.
 
 ```sh
-# the facilitator a seller points at (fees are paid by this key)
-BARKEEP_FACILITATOR_SECRET=$(stellar keys secret barkeep-testnet-deployer) \
+# 1. the facilitator: pays settlement fees with its OWN key. It refuses to
+#    start on the deployer key that open_tab and close_tab submit with.
+BARKEEP_FACILITATOR_SECRET=$(stellar keys secret barkeep-testnet-facilitator) \
   npx tsx packages/mcp-server/src/facilitator.ts        # http://127.0.0.1:4020
 
-# the live done-tests: pay, over-cap refusal, idempotency
-cd packages/mcp-server
+# 2. a seller to pay: persistent account, adds its TAB trustline on first start,
+#    refuses to start if the facilitator is not answering.
+BARKEEP_SELLER_SECRET=$(stellar keys secret barkeep-testnet-seller) \
+  npx tsx packages/mcp-server/src/seller.ts             # http://127.0.0.1:4021
+#    /haiku 0.0001   /forecast 0.00025   /dataset 0.002 (above a small tab)
+
+# 3. the MCP server in Claude Code, through a wrapper that reads the keys at
+#    launch; the registration stores only the wrapper's path.
+claude mcp add barkeep --scope local -- "$PWD/packages/mcp-server/bin/barkeep-mcp"
+```
+
+Then, in Claude Code: open a tab (`PT1H` or longer, so it outlives the take),
+and ask for `http://127.0.0.1:4021/haiku`. Repeating an identical call returns
+the first result without paying again; pass a new `request_id` to pay again.
+
+Checks, from `packages/mcp-server`:
+
+```sh
+# the stack above, end to end through the wrapper (services 1 and 2 running)
+npx tsx scripts/demo-stack-testnet.mjs
+
+# the pay_and_fetch done-tests: pay, over-cap refusal, idempotency
 BARKEEP_ADMIN_SECRET=$(stellar keys secret barkeep-testnet-admin) \
 BARKEEP_AGENT_SECRET=$(stellar keys secret barkeep-testnet-agent) \
 BARKEEP_SUBMITTER_SECRET=$(stellar keys secret barkeep-testnet-deployer) \
+BARKEEP_FACILITATOR_SECRET=$(stellar keys secret barkeep-testnet-facilitator) \
 npx tsx scripts/pay-and-fetch-testnet.mjs
 ```
 
 Results, with transaction hashes, are recorded under `doneTests.payAndFetch`
-in `deployments/testnet.json`.
+and `doneTests.demoStack` in `deployments/testnet.json`.
 
 ---
 

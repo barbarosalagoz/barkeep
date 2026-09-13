@@ -1,0 +1,31 @@
+#!/bin/sh
+# Launch the Barkeep MCP server with its signing keys read from the Stellar
+# CLI's key store at start-up, so no secret is ever written into Claude Code's
+# MCP configuration. Register it with:
+#
+#   claude mcp add barkeep --scope local -- /absolute/path/to/packages/mcp-server/bin/barkeep-mcp
+#
+# stdout is the MCP channel: everything this script says goes to stderr.
+# Identities can be overridden with BARKEEP_{ADMIN,AGENT,SUBMITTER}_IDENTITY.
+set -eu
+
+here=$(cd "$(dirname "$0")/.." && pwd)
+tsx="$here/../../node_modules/.bin/tsx"
+
+secret() {
+  if ! value=$(stellar keys secret "$1" 2>/dev/null); then
+    echo "barkeep-mcp: cannot read '$1' from the Stellar CLI key store (stellar keys ls)" >&2
+    exit 1
+  fi
+  printf '%s' "$value"
+}
+
+command -v stellar >/dev/null 2>&1 || { echo "barkeep-mcp: the stellar CLI is not on PATH" >&2; exit 1; }
+[ -x "$tsx" ] || { echo "barkeep-mcp: $tsx not found; run npm ci at the repo root" >&2; exit 1; }
+
+BARKEEP_ADMIN_SECRET=$(secret "${BARKEEP_ADMIN_IDENTITY:-barkeep-testnet-admin}")
+BARKEEP_AGENT_SECRET=$(secret "${BARKEEP_AGENT_IDENTITY:-barkeep-testnet-agent}")
+BARKEEP_SUBMITTER_SECRET=$(secret "${BARKEEP_SUBMITTER_IDENTITY:-barkeep-testnet-deployer}")
+export BARKEEP_ADMIN_SECRET BARKEEP_AGENT_SECRET BARKEEP_SUBMITTER_SECRET
+
+exec "$tsx" "$here/src/index.ts"
