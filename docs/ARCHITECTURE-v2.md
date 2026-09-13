@@ -109,6 +109,16 @@ Facts that shape the design:
   about 12 ledgers or roughly 60 seconds by default, not a timestamp. This is
   exactly why a C-account (our smart account) can pay at all, and it is the
   single most important reason to choose x402 on Stellar for this product.
+
+  **Update 2026-09-13:** measured, this is only half true. The facilitator
+  does pass a smart account's auth entry through untouched, but the public
+  facilitator (`x402.org/facilitator`) refuses Barkeep's payments anyway: its
+  event check rejects the spending-limit policy's `spending_limit_enforced`
+  event and its 50,000-stroop fee ceiling is below the ~324,000 a
+  smart-account transfer costs. Barkeep therefore runs its own facilitator
+  with those two checks relaxed, and `pay_and_fetch` pays only sellers whose
+  facilitator accepts smart-account payers. Evidence:
+  `deployments/testnet.json`, `doneTests.x402Spike`.
 - **Networks are CAIP-2**: `stellar:testnet`, `stellar:pubnet`.
 - **Spend controls exist in the client.** `@x402/core` ships a default of
   recognised pegged assets with a $1-per-payment cap; we tighten rather than

@@ -92,8 +92,10 @@ verifier deliberately skips origin and rpIdHash validation
 
 ## MCP server state
 
-`@barkeep/mcp` keeps tab metadata and an append-only receipt log outside the
-repository, at the first of:
+`@barkeep/mcp` keeps tab metadata, an append-only receipt log and
+pay_and_fetch's idempotency records (`payments.json`, which includes the
+truncated bodies of resources already paid for) outside the repository, at the
+first of:
 
 1. `$BARKEEP_STATE_DIR` — explicit override, used by the tests
 2. `$CLAUDE_PLUGIN_DATA/barkeep` — set by the host when Barkeep runs as a Claude
@@ -109,7 +111,9 @@ nobody can close by id.
 **It holds no key material.** Contract ids, ledger numbers, amounts, transaction
 hashes and the agent's *public* key. Signing keys are read from the environment
 (`BARKEEP_ADMIN_SECRET`, `BARKEEP_AGENT_SECRET`, `BARKEEP_SUBMITTER_SECRET`),
-never written. `src/server.test.ts` asserts this against the real files.
+never written. Barkeep's x402 facilitator (`src/facilitator.ts`) reads
+`BARKEEP_FACILITATOR_SECRET`, the key that pays settlement fees; it authorises
+no payment. `src/server.test.ts` asserts this against the real files.
 
 This departs from §5, which puts "the session key" in the plugin data
 directory. Storing a spending key next to the metadata describing what it may
