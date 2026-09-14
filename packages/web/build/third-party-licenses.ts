@@ -22,7 +22,7 @@
  * The runtime helpers the build tools inject are credited at the end.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -590,7 +590,15 @@ export interface ThirdPartyLicensesOptions {
  * URL answers with a short explanation instead of a 404.
  */
 export function thirdPartyLicenses(options: ThirdPartyLicensesOptions = {}): Plugin[] {
-  const root = options.root ?? PROJECT_ROOT;
+  /*
+   * Real path, because the bundler reports module ids by their real path.
+   * With a symlinked root -- macOS's /var/folders tmpdir is one, and every
+   * build fixture in the tests lives there -- rollup-plugin-license attributes
+   * the project's own modules to nothing under `cwd`, walks up to the nearest
+   * package.json, and reports the project itself as an unlicensed dependency
+   * ("fixture-app does not specify any license"). Linux CI never hit it.
+   */
+  const root = realpathSync(options.root ?? PROJECT_ROOT);
   let collected: Dependency[] | null = null;
   /*
    * Modules that contribute bytes to a chunk. A module whose export the
