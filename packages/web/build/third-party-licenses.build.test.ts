@@ -5,14 +5,14 @@
  * for a permissive one.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { build } from "vite";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { THIRD_PARTY_LICENSES_FILE, thirdPartyLicenses } from "./third-party-licenses.ts";
+import { PROJECT_ROOT, THIRD_PARTY_LICENSES_FILE, thirdPartyLicenses } from "./third-party-licenses.ts";
 
 interface FixturePackage {
   json: Record<string, unknown>;
@@ -187,5 +187,26 @@ describe("thirdPartyLicenses() in a real build", () => {
     );
 
     await expect(buildFixture(root)).rejects.toThrow(/textless-pkg@1\.0\.0 is bundled but ships no license text/);
+  });
+
+  /*
+   * The bill replaces the PromptRail app and drops the wallet packages. The
+   * overrides vendored for them (build/license-overrides) stay until someone
+   * cleans up; an override for a package that is no longer bundled must not
+   * fail the build or leak into the notices.
+   */
+  it("passes on a bundle without the wallet packages while their overrides are still vendored", async () => {
+    const root = fixture(
+      { "mit-pkg": esmPackage({ name: "mit-pkg", license: "MIT" }, { LICENSE: mitText("Fixture Author") }) },
+      callEntry([{ name: "value", from: "mit-pkg" }])
+    );
+    cpSync(join(PROJECT_ROOT, "build", "license-overrides"), join(root, "build", "license-overrides"), { recursive: true });
+
+    const output = await buildFixture(root);
+    const asset = output.find((item) => item.fileName === THIRD_PARTY_LICENSES_FILE);
+    const notices = String(asset?.source);
+
+    expect(notices).toContain("mit-pkg@1.0.0");
+    expect(notices).not.toMatch(/stellar-wallets-kit|freighter-api/);
   });
 });

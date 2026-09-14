@@ -9,14 +9,25 @@
  * tabStatus deliberately re-reads the chain rather than trusting them.
  */
 
+import {
+  PAYEES_NOT_RESTRICTED, SECONDS_PER_LEDGER, allowsAnyPayee, describeExpiry, describePayees, describeWindow,
+  fromBaseUnits, ledgersToWindow, readPayees, readSpend, reportReceipt, toBaseUnits, windowToLedgers, withUnit,
+  type Tab,
+} from "@barkeep/tab-read";
 import { Address, Keypair, StrKey, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
 
 import type { Chain } from "./chain.ts";
-import { allowsAnyPayee, type Receipt, type Store, type Tab } from "./state.ts";
+import type { Store } from "./state.ts";
 import { rawEd25519Key } from "./keys.ts";
 
-/** Testnet closes a ledger roughly every 5 seconds. */
-export const SECONDS_PER_LEDGER = 5;
+/*
+ * Reading and presenting a tab is @barkeep/tab-read's, shared with the bill.
+ * Re-exported so the server's own modules, scripts and tests keep one import.
+ */
+export {
+  PAYEES_NOT_RESTRICTED, SECONDS_PER_LEDGER, describeExpiry, describePayees, describeWindow, fromBaseUnits,
+  ledgersToWindow, readPayees, readSpend, reportReceipt, toBaseUnits, windowToLedgers, withUnit,
+};
 
 export interface TabConfig {
   token: string;
@@ -32,79 +43,6 @@ export interface TabConfig {
   smartAccount: string;
   /** The Default rule created at construction; admin operations authorise against it. */
   adminContextRuleId: number;
-}
-
-/** ISO-8601 duration -> ledgers. Supports the subset a tab window needs. */
-export function windowToLedgers(window: string): number {
-  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(window.trim());
-
-  if (!m || m.slice(1).every((v) => v === undefined)) {
-    throw new Error(
-      `window must be an ISO-8601 duration such as PT1H, PT30M or P1D; got "${window}"`
-    );
-  }
-
-  const [d, h, min, s] = m.slice(1).map((v) => (v ? Number(v) : 0));
-  const seconds = d * 86400 + h * 3600 + min * 60 + s;
-
-  if (seconds <= 0) throw new Error(`window must be greater than zero; got "${window}"`);
-  return Math.max(1, Math.ceil(seconds / SECONDS_PER_LEDGER));
-}
-
-/** Ledgers -> an ISO-8601 duration at SECONDS_PER_LEDGER, for tabs that predate storing `window`. */
-export function ledgersToWindow(ledgers: number): string {
-  let s = ledgers * SECONDS_PER_LEDGER;
-  const d = Math.floor(s / 86400);
-  s -= d * 86400;
-  const h = Math.floor(s / 3600);
-  s -= h * 3600;
-  const m = Math.floor(s / 60);
-  s -= m * 60;
-  const time = `${h ? `${h}H` : ""}${m ? `${m}M` : ""}${s ? `${s}S` : ""}`;
-  const iso = `P${d ? `${d}D` : ""}${time ? `T${time}` : ""}`;
-  return iso === "P" ? "PT0S" : iso;
-}
-
-/** "PT1H (720 ledgers)": the window as asked, and what the chain counts. */
-export const describeWindow = (window: string | undefined, ledgers: number): string =>
-  `${window ?? ledgersToWindow(ledgers)} (${ledgers} ledgers)`;
-
-/** "at ledger 4653477, in ~60 min (716 ledgers)", or how long ago it passed. */
-export function describeExpiry(expiryLedger: number, currentLedger: number): string {
-  const left = expiryLedger - currentLedger;
-  const minutes = Math.round((Math.abs(left) * SECONDS_PER_LEDGER) / 60);
-  return left >= 0
-    ? `at ledger ${expiryLedger}, in ~${minutes} min (${left} ledgers)`
-    : `at ledger ${expiryLedger}, ~${minutes} min ago (${-left} ledgers)`;
-}
-
-/** Decimal string in token units -> base units, without floating point. */
-export function toBaseUnits(amount: string, decimals: number, label = "limit"): bigint {
-  const m = /^(\d+)(?:\.(\d+))?$/.exec(amount.trim());
-
-  if (!m) throw new Error(`${label} must be a positive decimal string; got "${amount}"`);
-
-  const frac = (m[2] ?? "").padEnd(decimals, "0");
-  if (frac.length > decimals) {
-    throw new Error(`${label} has more than ${decimals} decimal places: "${amount}"`);
-  }
-
-  const value = BigInt(m[1] + frac);
-  if (value <= 0n) throw new Error(`${label} must be greater than zero; got "${amount}"`);
-  return value;
-}
-
-/** An amount with its token symbol: "0.0001 TAB". */
-export const withUnit = (value: bigint, cfg: Pick<TabConfig, "tokenDecimals" | "tokenSymbol">): string =>
-  `${fromBaseUnits(value, cfg.tokenDecimals)} ${cfg.tokenSymbol}`;
-
-export function fromBaseUnits(value: bigint, decimals: number): string {
-  const neg = value < 0n;
-  const s = (neg ? -value : value).toString().padStart(decimals + 1, "0");
-  const whole = s.slice(0, -decimals || undefined);
-  const frac = decimals ? s.slice(-decimals).replace(/0+$/, "") : "";
-
-  return `${neg ? "-" : ""}${whole}${frac ? `.${frac}` : ""}`;
 }
 
 const tabId = (): string =>
@@ -316,83 +254,6 @@ export interface TabStatus {
   /** True when nothing on chain restricts who this tab pays. */
   allow_any_payee: boolean;
   payees: string;
-}
-
-/** Who a tab can pay, worded once for open_tab and tab_status. */
-export const PAYEES_NOT_RESTRICTED =
-  "Not restricted: this tab was opened with allow_any_payee. The cap limits how much it can spend, not who it pays.";
-
-export const describePayees = (tab: Pick<Tab, "payeeEnforcement" | "payees" | "allowAnyPayee">): string =>
-  allowsAnyPayee(tab) || !tab.payees
-    ? PAYEES_NOT_RESTRICTED
-    : `Restricted on chain to: ${tab.payees.join(", ")}. The payee-allowlist policy refuses a transfer to anyone else ` +
-      `(Error(Contract, #3901)); only the human signer can change the list.`;
-
-/**
- * A stored receipt as tab_status reports it: snake_case, and the amount joined
- * with its asset. The log on disk keeps its own shape; this is presentation.
- *
- * allow_any_payee is on every line. A receipt written before the allowlist
- * existed did not record it; `tab` supplies the tab's value for those.
- */
-export function reportReceipt(
-  r: Receipt,
-  cfg: Pick<TabConfig, "tokenSymbol">,
-  tab?: Pick<Tab, "payeeEnforcement" | "allowAnyPayee">
-): Record<string, unknown> {
-  const out: Record<string, unknown> = { at: r.at, kind: r.kind };
-  if (r.amount !== undefined) out.amount = `${r.amount} ${r.asset ?? cfg.tokenSymbol}`;
-  if (r.endpoint !== undefined) out.endpoint = r.endpoint;
-  if (r.to !== undefined) out.to = r.to;
-  if (r.tx !== undefined) out.tx = r.tx;
-  if (r.refusedBy !== undefined) out.refused_by = r.refusedBy;
-  if (r.reason !== undefined) out.reason = r.reason;
-  if (r.note !== undefined) out.note = r.note;
-  const allowAny = r.allowAnyPayee ?? (tab ? allowsAnyPayee(tab) : undefined);
-  if (allowAny !== undefined) out.allow_any_payee = allowAny;
-  return out;
-}
-
-/**
- * Who the tab's rule can pay, read from the chain: the rule's policies, and
- * the allowlist's entries if one is installed. The human signer can change the
- * list after open_tab, so the stored copy is not the answer.
- */
-export async function readPayees(
-  chain: Chain,
-  cfg: TabConfig,
-  tab: Pick<Tab, "contextRuleId">
-): Promise<{ allowAnyPayee: boolean; payees: string[] | null }> {
-  const rule = (await chain.read({
-    contract: cfg.smartAccount,
-    fn: "get_context_rule",
-    args: [xdr.ScVal.scvU32(tab.contextRuleId)],
-  })) as { policies: string[] };
-
-  if (!rule.policies.includes(cfg.payeeAllowlistPolicy)) return { allowAnyPayee: true, payees: null };
-
-  const payees = (await chain.read({
-    contract: cfg.payeeAllowlistPolicy,
-    fn: "get_payees",
-    args: [xdr.ScVal.scvU32(tab.contextRuleId), new Address(cfg.smartAccount).toScVal()],
-  })) as string[];
-
-  return { allowAnyPayee: false, payees };
-}
-
-/** The policy's own record of a tab's cap and rolling-window spend, in base units. */
-export async function readSpend(
-  chain: Chain,
-  cfg: TabConfig,
-  tab: Pick<Tab, "policyContract" | "contextRuleId">
-): Promise<{ limit: bigint; spent: bigint; periodLedgers: number }> {
-  const data = (await chain.read({
-    contract: tab.policyContract,
-    fn: "get_spending_limit_data",
-    args: [xdr.ScVal.scvU32(tab.contextRuleId), new Address(cfg.smartAccount).toScVal()],
-  })) as { spending_limit: bigint; period_ledgers: number; cached_total_spent: bigint };
-
-  return { limit: BigInt(data.spending_limit), spent: BigInt(data.cached_total_spent), periodLedgers: Number(data.period_ledgers) };
 }
 
 /**
