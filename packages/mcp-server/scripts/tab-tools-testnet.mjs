@@ -81,18 +81,22 @@ console.log(`account   ${C.smartAccount.id}\n`);
 console.log("11. open_tab");
 
 try {
-  await call("open_tab", { limit: "0.001", window: "PT10M", payees: ["GABC"] });
-  check(false, "passing payees is refused");
+  await call("open_tab", { limit: "0.001", window: "PT10M" });
+  check(false, "a tab with no payees and no allow_any_payee is refused");
 } catch (e) {
-  check(/not enforceable yet/.test(String(e)), "passing payees is refused, not silently ignored");
+  check(/no payees, and allow_any_payee is not true/.test(String(e)), "a tab with no payees and no allow_any_payee is refused");
 }
 
+/*
+ * The out-of-band transfer below pays the deployer, so this tab is opened with
+ * allow_any_payee; scripts/payee-allowlist-testnet.mjs covers restricted tabs.
+ */
 const LIMIT = "0.0005";        // 5000 base units at 7 decimals
-const opened = await call("open_tab", { limit: LIMIT, window: "PT1M" });
+const opened = await call("open_tab", { limit: LIMIT, window: "PT1M", allow_any_payee: true });
 
 check(Boolean(opened.tab_id && opened.tx), "creates the rule on chain and returns a tab id + tx",
   `tab ${opened.tab_id}  rule ${opened.context_rule_id}\n        tx ${opened.explorer}`);
-check(/^Not restricted\./.test(opened.payees), "reports that payees are not enforced", opened.payees);
+check(opened.allow_any_payee === true && /^Not restricted:/.test(opened.payees), "reports allow_any_payee and that payees are not restricted", opened.payees);
 
 /* ---- 12. tab_status matches the chain ------------------------------------ */
 console.log("\n12. tab_status");
@@ -100,7 +104,7 @@ console.log("\n12. tab_status");
 const before = await call("tab_status", { tab_id: opened.tab_id });
 check(before.spent === "0 TAB", "starts at zero spent", `limit ${before.limit}, spent ${before.spent}`);
 check(
-  /^Not restricted\..*not who it pays/.test(before.payees),
+  before.allow_any_payee === true && /^Not restricted:.*not who it pays/.test(before.payees),
   "states plainly that payees are unconstrained",
   before.payees
 );

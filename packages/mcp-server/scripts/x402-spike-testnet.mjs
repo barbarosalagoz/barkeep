@@ -78,6 +78,7 @@ const tabCfg = {
   token: C.token.id,
   tokenDecimals: 7,
   policyContract: C.policySpendingLimit.id,
+  payeeAllowlistPolicy: C.policyPayeeAllowlist.id,
   verifierEd25519: C.verifierEd25519.id,
   smartAccount: C.smartAccount.id,
   adminContextRuleId: 0,
@@ -332,7 +333,7 @@ log(JSON.stringify(results.T0, null, 2));
 log("\nopening a tab (agent rule on the smart account)");
 process.env.BARKEEP_STATE_DIR ??= mkdtempSync(join(tmpdir(), "barkeep-x402-spike-"));
 const store = new Store(process.env.BARKEEP_STATE_DIR);
-const tab = await openTab(chain, store, tabCfg, admin, agent, { limit: "0.01", window: "PT15M" });
+const tab = await openTab(chain, store, tabCfg, admin, agent, { limit: "0.01", window: "PT15M", allow_any_payee: true });
 log(`  tab ${tab.tabId} rule ${tab.contextRuleId} expiry ${tab.expiryLedger}\n  ${explorerTx(tab.tx)}`);
 
 try {

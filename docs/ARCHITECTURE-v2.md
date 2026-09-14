@@ -216,8 +216,14 @@ pay to have audited):
   token's transfers, not our account's destinations. The "AI Agents" pseudocode in
   `packages/accounts/README.md` shows a `whitelist_policy`, and nearby examples
   show `balance_policy`, `frequency_policy` and `amount_policy`. None of these
-  exist; only `spending_limit` has an implementation behind it. A Barkeep
-  `payee_allowlist` policy contract is a Week-2 deliverable.
+  exist; only `spending_limit` has an implementation behind it. Barkeep's
+  own policy is `contracts/barkeep-payee-allowlist`: installed on the tab's
+  rule next to `spending_limit`, it refuses a `transfer` whose `to`
+  (`args.get(1)`) is not listed (3901), refuses an empty list (3902), and only
+  `CallContract` rules may carry it. It fails closed: a tab with no list is
+  opened only with an explicit `allow_any_payee: true`. Its `enforce` emits no
+  event, so a payment's simulation carries no more non-transfer events than
+  `spending_limit` already adds. Unaudited, like the rest (§4.1).
 
 Known limits to design around:
 
@@ -251,7 +257,7 @@ this repository, reviewed by nobody outside it, and running on Testnet only.
 | WebAuthn verifier | `contracts/barkeep-verifier-webauthn` | **No** |
 | Barkeep smart account | `contracts/barkeep-smart-account` | **No** |
 | Spending-limit policy | `contracts/barkeep-policy` | **No** |
-| Payee-allowlist policy | not yet written | **No** |
+| Payee-allowlist policy | `contracts/barkeep-payee-allowlist` (ours; not in `stellar-accounts`) | **No** |
 
 Deployed addresses are in `deployments/testnet.json`.
 
@@ -457,7 +463,7 @@ converts the only load-bearing unknown into a fact.
 
 | # | Risk | Impact | Mitigation |
 | --- | --- | --- | --- |
-| 1 | No payee allowlist ships with `stellar-accounts` | The tab caps *how much*, not *to whom* | Write a `payee_allowlist` policy; until it exists, cap tiny and log every payee |
+| 1 | No payee allowlist ships with `stellar-accounts` | The tab caps *how much*, not *to whom* | Written: `contracts/barkeep-payee-allowlist`, fail closed, on Testnet. It is ours and unaudited (risk 2); `allow_any_payee` tabs are still unrestricted |
 | 2 | **Every contract we deploy is unaudited** — both verifiers, the account and the policies (§4.1) | A bug is a loss of funds | Testnet only; tiny caps; budget an external review before mainnet |
 | 3 | OZ audits are first-party only, and no published release matches an audited commit | Residual risk in the library we build on | Pin `=0.7.2`, diff against `239a2a7` (v0.7.0-rc.1), track upstream releases |
 | 4 | Public facilitator supports `stellar:testnet` only | No free mainnet path today | Testnet first; for mainnet, self-host a facilitator (core + stellar packages) and price the RPC |

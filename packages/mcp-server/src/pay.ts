@@ -9,9 +9,12 @@
  * answers the paid retry with a refusal; nothing is paid.
  *
  * WHAT IS ENFORCED WHERE. The per-call cap (max_amount) and idempotency are
- * this server's. The tab's cap is the chain's: an over-cap payment is refused
- * by the spending-limit policy when the signed entry is simulated, before
- * anything reaches the seller, and the same invocation is refused on chain.
+ * this server's. The tab's cap and payee allowlist are the chain's: an
+ * over-cap payment, or one to a payee not on the list, is refused by the
+ * policy when the signed entry is simulated, before anything reaches the
+ * seller, and the same invocation is refused on chain. There is deliberately
+ * no local payee check in front of that: the human signer can change the list
+ * on chain, and a stale local copy would refuse or allow the wrong payees.
  *
  * IDEMPOTENCY. A request is (tab, url, max_amount, request_id). The first call
  * records `pending` BEFORE the payment signature leaves this process, so an
@@ -29,7 +32,7 @@ import {
 import type { PaymentPayload, PaymentRequired, PaymentRequirements } from "@x402/core/types";
 
 import { explorerTx } from "./chain.ts";
-import type { PaymentRecord, Receipt, Store, Tab } from "./state.ts";
+import { allowsAnyPayee, type PaymentRecord, type Receipt, type Store, type Tab } from "./state.ts";
 import { fromBaseUnits, toBaseUnits } from "./tabs.ts";
 import { AccountRefusal, X402_NETWORK } from "./x402Scheme.ts";
 
@@ -119,13 +122,14 @@ export function createPayer(deps: PayDeps) {
    * the reason and what stopped it: a bill that only lists successes hides the
    * refusals that show the limits working.
    */
-  const trace = (tab: Tab, url: string, fields: Omit<Receipt, "tabId" | "at" | "endpoint" | "asset">) =>
+  const trace = (tab: Tab, url: string, fields: Omit<Receipt, "tabId" | "at" | "endpoint" | "asset" | "allowAnyPayee">) =>
     deps.store.appendReceipt({
       tabId: tab.tabId,
       at: new Date().toISOString(),
       endpoint: url,
       asset: deps.tokenSymbol,
       ...fields,
+      allowAnyPayee: allowsAnyPayee(tab),
     });
 
   const fromRecord = (r: PaymentRecord, replayed: boolean): PayResult => ({
@@ -147,10 +151,20 @@ export function createPayer(deps: PayDeps) {
    * One sentence for a refusal by the smart account: who refused, the numbers
    * that made it refuse, and the contract error with its meaning.
    */
-  async function accountRefusalMessage(error: AccountRefusal, tab: Tab, price: bigint): Promise<string> {
+  async function accountRefusalMessage(error: AccountRefusal, tab: Tab, price: bigint, payTo: string): Promise<string> {
     const nothing = "Nothing was sent or paid.";
 
     switch (error.code) {
+      case "3901":
+        return (
+          `The smart account's on-chain payee allowlist refused this payment: ${payTo} is not on this tab's allowlist ` +
+          `(Error(Contract, #3901), PayeeNotAllowed). The agent cannot add payees; the human signer can. ${nothing}`
+        );
+      case "3903":
+        return (
+          `The smart account's on-chain payee allowlist refused this payment: it could not read ${payTo} as a plain ` +
+          `destination (Error(Contract, #3903), NotAllowed; a muxed address is refused). ${nothing}`
+        );
       case "3221": {
         const left = deps.remaining ? await deps.remaining(tab).catch(() => null) : null;
         const numbers =
@@ -260,7 +274,7 @@ export function createPayer(deps: PayDeps) {
       // Nothing left this process: the account refused the signed entry, or signing failed.
       const message =
         error instanceof AccountRefusal
-          ? await accountRefusalMessage(error, tab, price)
+          ? await accountRefusalMessage(error, tab, price, chosen.payTo)
           : `The payment could not be signed: ${(error as Error).message}. Nothing was sent or paid.`;
       save({ status: "refused", error: message });
       trace(tab, args.url, {
@@ -312,6 +326,7 @@ export function createPayer(deps: PayDeps) {
         to: chosen.payTo,
         tx: settle.transaction,
         endpoint: args.url,
+        allowAnyPayee: allowsAnyPayee(tab),
       });
       return fromRecord(record, false);
     }

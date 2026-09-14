@@ -16,8 +16,8 @@ Home: **[barkeep.dev](https://barkeep.dev)**
 > built and runs on Testnet: the MCP server in `packages/mcp-server`, which
 > opens a tab, pays for HTTP requests against it, reports it and closes it --
 > see [The tab (MCP server)](#the-tab-mcp-server-testnet), including what it
-> **cannot** pay yet. The payee allowlist, the bill dashboard and plugin
-> packaging are still a plan.
+> **cannot** pay yet. The bill dashboard and plugin packaging are still a
+> plan.
 >
 > The project was previously named **PromptRail**. Its Stellar Journey to
 > Mastery — Yellow Belt submission record is preserved under the old name in
@@ -85,15 +85,24 @@ Verified production flow:
 `packages/mcp-server` is a local stdio MCP server for Claude Code. A tab is an
 on-chain context rule on a smart account built on OpenZeppelin's
 `stellar-accounts` library: the agent's session key as its only signer, a
-spending-limit policy, and an expiry. The cap is enforced by that policy on
-chain, not by the server. None of these contracts is audited; see
-[docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
+spending-limit policy, a payee-allowlist policy, and an expiry. The cap and
+the list of payees are enforced by those policies on chain, not by the server.
+None of these contracts is audited; the allowlist is Barkeep's own, since
+`stellar-accounts` ships none. See [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
+
+**Payees fail closed.** `open_tab` takes `payees`, and a transfer to anyone
+else is refused on chain (`Error(Contract, #3901)`). A tab with no list must
+be opened with `allow_any_payee: true`, said explicitly; with neither,
+`open_tab` refuses. The flag is shown by `tab_status` and on every receipt.
+The agent's key cannot change the list; the human signer can
+(`add_payee` / `remove_payee` on the policy). Paying a payee not known when
+the tab was opened is not supported.
 
 | Tool | What it does |
 | --- | --- |
-| `open_tab` | Adds the agent rule with a cap and a window |
+| `open_tab` | Adds the agent rule with a cap, a window, and who it may pay |
 | `pay_and_fetch` | Fetches a URL; on an x402 402 challenge, pays it from the tab |
-| `tab_status` | Limit, spent and remaining, read from the chain, plus receipts |
+| `tab_status` | Limit, spent, remaining and payees, read from the chain, plus receipts |
 | `close_tab` | Removes the rule, revoking the session key |
 
 ### Who `pay_and_fetch` can pay -- read this first
@@ -109,7 +118,9 @@ two reasons measured on Testnet (`deployments/testnet.json`,
 1. **Its event check.** Upstream `@x402/stellar` rejects any contract event
    that is not a `transfer`. The spending-limit policy emits
    `spending_limit_enforced` on every capped spend, so the thing that makes a
-   tab a tab is what gets refused.
+   tab a tab is what gets refused. The payee allowlist deliberately emits
+   nothing when it passes a payment, so it adds no second event to refuse;
+   Barkeep's facilitator would tolerate one, a third-party one would not.
 2. **Its fee ceiling.** 50,000 stroops by default; a smart-account transfer
    simulated at 324,039.
 
@@ -124,7 +135,7 @@ Per call, `max_amount` caps the price and identical calls (same tab, URL,
 server; the tab's cap is enforced on chain. The money tools carry the
 `anthropic/requiresUserInteraction` flag, so the host asks on every call.
 Every payment appends a receipt -- tx hash, amount, endpoint, timestamp, tab
-id -- to the state directory's `receipts.jsonl`.
+id, `allow_any_payee` -- to the state directory's `receipts.jsonl`.
 
 ### Run the demo stack
 
@@ -148,7 +159,8 @@ BARKEEP_SELLER_SECRET=$(stellar keys secret barkeep-testnet-seller) \
 claude mcp add barkeep --scope local -- "$PWD/packages/mcp-server/bin/barkeep-mcp"
 ```
 
-Then, in Claude Code: open a tab (`PT1H` or longer, so it outlives the take),
+Then, in Claude Code: open a tab (`PT1H` or longer, so it outlives the take)
+with the seller as its payee, `GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7`,
 and ask for `http://127.0.0.1:4021/haiku`. Repeating an identical call returns
 the first result without paying again; pass a new `request_id` to pay again.
 
@@ -164,10 +176,16 @@ BARKEEP_AGENT_SECRET=$(stellar keys secret barkeep-testnet-agent) \
 BARKEEP_SUBMITTER_SECRET=$(stellar keys secret barkeep-testnet-deployer) \
 BARKEEP_FACILITATOR_SECRET=$(stellar keys secret barkeep-testnet-facilitator) \
 npx tsx scripts/pay-and-fetch-testnet.mjs
+
+# the payee-allowlist done-tests (same four keys): allowlisted payee pays,
+# unlisted payee and over-cap both fail on chain, the agent cannot add a payee,
+# a tab with no payees and no allow_any_payee is refused
+npx tsx scripts/payee-allowlist-testnet.mjs
 ```
 
-Results, with transaction hashes, are recorded under `doneTests.payAndFetch`
-and `doneTests.demoStack` in `deployments/testnet.json`.
+Results, with transaction hashes, are recorded under `doneTests.payAndFetch`,
+`doneTests.demoStack` and `doneTests.payeeAllowlist` in
+`deployments/testnet.json`.
 
 ---
 

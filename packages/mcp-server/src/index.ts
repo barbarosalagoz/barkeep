@@ -24,7 +24,8 @@ import { Chain, explorerTx } from "./chain.ts";
 import { keypairFromEnv } from "./keys.ts";
 import { createPayer, type PayResult } from "./pay.ts";
 import { Store } from "./state.ts";
-import { closeTab, describeExpiry, describePayees, describeWindow, openTab, readSpend, tabStatus, withUnit, type CloseTabResult, type RuleListingKey, type TabConfig } from "./tabs.ts";
+import { allowsAnyPayee } from "./state.ts";
+import { MAX_PAYEES, closeTab, payeeSelection, describeExpiry, describePayees, describeWindow, openTab, readSpend, tabStatus, withUnit, type CloseTabResult, type RuleListingKey, type TabConfig } from "./tabs.ts";
 import { loadDeployment } from "./deployment.ts";
 import { X402_NETWORK, smartAccountExactScheme } from "./x402Scheme.ts";
 
@@ -115,6 +116,7 @@ export function createServer(): McpServer {
     tokenSymbol: deployment.contracts.token.symbol!,
     tokenDescription: deployment.contracts.token.description!,
     policyContract: deployment.contracts.policySpendingLimit.id,
+    payeeAllowlistPolicy: deployment.contracts.policyPayeeAllowlist.id,
     verifierEd25519: deployment.contracts.verifierEd25519.id,
     smartAccount: deployment.contracts.smartAccount.id,
     adminContextRuleId: 0,
@@ -178,8 +180,11 @@ export function createServer(): McpServer {
       title: "Open a tab",
       description:
         "Open a spending tab: creates an on-chain context rule holding the agent's " +
-        "session key, a spending-limit policy and an expiry. Returns a tab id and the " +
-        "transaction hash. The cap limits how much, not who to.",
+        "session key, a spending-limit policy, a payee-allowlist policy and an expiry. " +
+        "Returns a tab id and the transaction hash. Say who the tab may pay: pass payees, " +
+        "which the chain enforces, or allow_any_payee: true for a tab that can pay anyone " +
+        "up to its cap. With neither, the tab is refused: no list does not mean anyone. " +
+        "Payees cannot be added by the agent later; only the human signer can change the list.",
       inputSchema: {
         limit: z.string().describe(`Cap for the window, in ${cfg.tokenSymbol} (${cfg.tokenDescription}) e.g. "0.5"`),
         window: z.string().describe('Rolling window as an ISO-8601 duration, e.g. "PT1H"'),
@@ -187,14 +192,25 @@ export function createServer(): McpServer {
           .array(z.string())
           .optional()
           .describe(
-            "NOT YET ENFORCEABLE. Reserved for the payee_allowlist policy, which is " +
-              "not written. Passing it is refused rather than silently ignored."
+            `Stellar addresses (G... or C..., at most ${MAX_PAYEES}) this tab may pay. Enforced on chain by the ` +
+              "payee-allowlist policy: a transfer to anyone else is refused with Error(Contract, #3901). " +
+              "Required unless allow_any_payee is true."
+          ),
+        allow_any_payee: z
+          .boolean()
+          .optional()
+          .describe(
+            "Set true, with no payees, to open a tab that can pay ANY address up to its cap. Shown on " +
+              "tab_status and on every receipt. Omitted or false with no payees: open_tab refuses."
           ),
       },
       _meta: REQUIRES_INTERACTION,
     },
     async (args) => {
       try {
+        // Refuse a bad payee selection before any key is read or anything is signed.
+        payeeSelection(args);
+
         const result = await openTab(
           chain(),
           store,
@@ -213,7 +229,8 @@ export function createServer(): McpServer {
           context_rule_id: result.contextRuleId,
           tx: result.tx,
           explorer: explorerTx(result.tx),
-          // The standing caveat goes last: plain, present, not the headline.
+          // Who it can pay goes last: plain, present, not the headline.
+          allow_any_payee: allowsAnyPayee(result.tab),
           payees: describePayees(result.tab),
         });
       } catch (error) {
@@ -278,8 +295,8 @@ export function createServer(): McpServer {
       title: "Read a tab",
       description:
         "Limit, spent and remaining for a tab, read from the chain rather than local " +
-        "state, so spending done outside this server is included. Also reports which " +
-        "constraints are actually enforced.",
+        "state, so spending done outside this server is included. Also reports who the tab " +
+        "can pay, read from the rule on chain, and allow_any_payee.",
       inputSchema: {
         tab_id: z.string().optional().describe("Defaults to the current tab"),
       },

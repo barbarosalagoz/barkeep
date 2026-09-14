@@ -43,6 +43,15 @@
       "deployTx": "b6429435bb459726bdb35312834d016d328d19e85836a7706345de665dbf7dbe",
       "audited": false
     },
+    "policyPayeeAllowlist": {
+      "id": "CD6Z4IAZ7MIGW2J2SZ545GN7CSRZY52HFFWUT3FUADHYRN7Z47N73IIY",
+      "crate": "contracts/barkeep-payee-allowlist",
+      "wasmHash": "2a18f621dca5a1420012757bde58eb512a920c7073fadd9b16f50ee0b25cebc5",
+      "uploadTx": "dee57c96b5791c0fb1d51ba27f384f97d73bab97af3fe6e60c015066815c0186",
+      "deployTx": "16dded0a92e7458cc1ef162fc37dfac0f156e19b236940074f13fb364623024a",
+      "note": "Written by Barkeep, not OpenZeppelin: stellar-accounts 0.7.2 ships no payee allowlist. Its enforce emits no event (see the crate docs).",
+      "audited": false
+    },
     "smartAccount": {
       "id": "CCAO6UVMZ2JGUAGIQKMVHXKWKD7TZKW2YP77M2NK56MWL6LC66ZZ3FLH",
       "crate": "contracts/barkeep-smart-account",
@@ -295,6 +304,142 @@
         "ledger": 4652376,
         "successful": true,
         "source": "deployer"
+      }
+    },
+    "payeeAllowlist": {
+      "script": "packages/mcp-server/scripts/payee-allowlist-testnet.mjs",
+      "date": "2026-09-14",
+      "policy": "CD6Z4IAZ7MIGW2J2SZ545GN7CSRZY52HFFWUT3FUADHYRN7Z47N73IIY",
+      "note": "Real MCP tools over an in-memory transport; local seller on Barkeep's facilitator over HTTP; fresh throwaway payees, both with a TAB trustline. Tab cap 5000 base units, spending limit and allowlist on the SAME rule. 38/38. Every on-chain refusal code below was read back from RPC getTransaction's diagnostic events for that hash, not taken from a simulation; every successful flag, ledger and fee cross-checked on Horizon.",
+      "listedPayee": "GA3UUMEFLK3AXZZ5G77RE77DEKQJPBH5UIXQNW6JSHUUB3G3UPUYRB5U",
+      "unlistedPayee": "GDX6P2QQZZAWJD7P7USDBS6TDSPPE6SYUIJLILOURSNDOXKFAQIT2HE3",
+      "openTab": {
+        "tx": "98ddb354c722ae104aee5ebc772c7800fa3cf6774988d958b8432e158bce2ed6",
+        "ledger": 4673503,
+        "successful": true,
+        "contextRuleId": 23,
+        "policies": [
+          "CBEILTNYZEE5KX6WTSRON3FCXE7KBYAAUVUWY7TWEUBIEHIY47NVPWBZ",
+          "CD6Z4IAZ7MIGW2J2SZ545GN7CSRZY52HFFWUT3FUADHYRN7Z47N73IIY"
+        ]
+      },
+      "A1_allowlistedPayeeSucceeds": {
+        "tx": "42c1ad39a2baefc37a9e78ea0a7d0df5f86c696f6396085a1492e6699801a605",
+        "ledger": 4673505,
+        "successful": true,
+        "feeCharged": 408538,
+        "amount": "0.0001",
+        "via": "pay_and_fetch, settled by Barkeep's facilitator",
+        "events": [
+          "spending_limit_enforced (policy CBEILTNY...)",
+          "transfer (token CBXLQ3TC...)"
+        ],
+        "eventsFromAllowlist": 0
+      },
+      "A2_nonAllowlistedPayeeFails": {
+        "payAndFetch": "refused at the enforcing simulation, nothing sent to the seller: Error(Contract, #3901) PayeeNotAllowed; price 0.0001, remaining 0.0004 (under the cap)",
+        "forcedOnChain": {
+          "tx": "681ae9eae8d09c83f49b8977755687deae564458c4680589d9f88e0ab4a7b4d0",
+          "ledger": 4673507,
+          "successful": false,
+          "error": "Error(Contract, #3901) PayeeNotAllowed",
+          "how": "the same transfer (1000 to the unlisted payee, rule 23, agent key) submitted directly with A1's footprint"
+        }
+      },
+      "A2b_allowlistedButOverCapFails": {
+        "payAndFetch": "refused at the enforcing simulation: Error(Contract, #3221) SpendingLimitExceeded; price 0.00045, remaining 0.0004",
+        "forcedOnChain": {
+          "tx": "a66b26c6ef6932de6e81f9bf2b23f47d7631c1c3c95ef55ce4bd7c5c23bef505",
+          "ledger": 4673509,
+          "successful": false,
+          "error": "Error(Contract, #3221) SpendingLimitExceeded"
+        }
+      },
+      "A3_agentCannotAddPayee": {
+        "agentOnTabRule": {
+          "tx": "ff51d3a16cef73ef922a1d9f0d3537362a85e0f02dc4b4d6e6b2bb71ca571afc",
+          "ledger": 4673511,
+          "successful": false,
+          "error": "Error(Contract, #3002) UnvalidatedContext",
+          "why": "add_payee is a call to the policy; the tab's rule is CallContract(token)"
+        },
+        "agentOnRule0": "refused in simulation, Error(Contract, #3002): rule 0 has no policies, so it needs its own signer",
+        "listAfter": [
+          "GA3UUMEFLK3AXZZ5G77RE77DEKQJPBH5UIXQNW6JSHUUB3G3UPUYRB5U"
+        ],
+        "humanSignerAddPayee": {
+          "tx": "cdc7e1db7a8f2d385cb37feb2abed7c6723c6869b6b9c688fc281c91873f011b",
+          "ledger": 4673513,
+          "successful": true
+        },
+        "previouslyRefusedPayeeThenPays": {
+          "tx": "4b6e23ecc1d96cec2d43810ac65ebaa0ccd4dcb23b24124c789d483111cd27f7",
+          "ledger": 4673515,
+          "successful": true
+        }
+      },
+      "A4_noPayeesNoAllowAnyRefused": {
+        "openTab": "open_tab refused: no payees, and allow_any_payee is not true. An empty or absent payee list does not mean anyone. Pass payees (G... or C... addresses) to restrict who this tab can pay, enforced on chain, or allow_any_payee: true to open a tab that can pay anyone up to its cap. Nothing was sent.",
+        "alsoRefused": [
+          "payees: []",
+          "allow_any_payee: false"
+        ],
+        "nextRuleIdUnchanged": "23 -> 23",
+        "emptyListForcedIntoInstall": {
+          "tx": "b195c7ff78737ad4a4c5ec933ac613d532057aa91e5c52ecc18aa2d009e4a0b6",
+          "ledger": 4673518,
+          "successful": false,
+          "error": "Error(Contract, #3902) EmptyAllowlist",
+          "how": "add_context_rule with the allowlist and payees [], signed by the human signer, submitted with the footprint of a simulated valid install carrying the same auth nonce"
+        },
+        "honestScope": "The account itself accepts a rule without the allowlist (that is what allow_any_payee builds), so refusing an ABSENT list is open_tab's; refusing an EMPTY list is also the contract's."
+      },
+      "A5_allowAnyPayeeShown": {
+        "openTab": {
+          "tx": "3b619897eb671ada08952278301d4229e0be1faa66bad1bfb97cb8049375fde6",
+          "ledger": 4673519,
+          "successful": true
+        },
+        "rulePolicies": [
+          "CBEILTNYZEE5KX6WTSRON3FCXE7KBYAAUVUWY7TWEUBIEHIY47NVPWBZ"
+        ],
+        "tabStatus": {
+          "allow_any_payee": true
+        },
+        "receipts": [
+          {
+            "kind": "open",
+            "allowAnyPayee": true
+          },
+          {
+            "kind": "close",
+            "allowAnyPayee": true
+          }
+        ],
+        "closeTab": {
+          "tx": "368e4728620b9c002370e707940d9ac8b8a7c61cbf2c67cac7b61dbac7d2631c",
+          "ledger": 4673521,
+          "successful": true
+        }
+      },
+      "closeTab": {
+        "tx": "71e4dccc976e8745baacf591ecce99eda9f1a00b20b0a4c9aa18c4d3bf1195ca",
+        "ledger": 4673516,
+        "successful": true,
+        "finalSpent": "0.0002"
+      },
+      "regressionRuns": {
+        "note": "Same day, after the change: tab-tools-testnet.mjs 10/10 and pay-and-fetch-testnet.mjs 13/13 (its P1 receipt check was stale since #5 and was corrected).",
+        "payAndFetchP1": "e5c82d7e9796ffbfd4a625dda4f2917b9d1b3d8968297d2696ff70441f057445",
+        "payAndFetchP2forced": "184814886681af44b48381099b7f107b0e4acb2c314470828c59be02b4ab7a3c"
+      },
+      "earlierRefusalCodesReverified": {
+        "why": "Chain.settle searched JSON.stringify of XDR diagnostic events for the text Error(Contract, #N), which never matches, so forced refusals reported the SIMULATION's code. Fixed in this change. The five earlier records were read back from RPC on 2026-09-14 and all match the ledger.",
+        "overCap": "3221",
+        "afterExpiry": "3002",
+        "transferAfterClose": "3000",
+        "payAndFetchP2forced": "3221",
+        "payAndFetchRerunP2forced": "3221"
       }
     }
   },

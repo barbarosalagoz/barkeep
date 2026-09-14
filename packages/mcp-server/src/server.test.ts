@@ -76,16 +76,27 @@ describe("the server as a host sees it", () => {
     expect(flagged("tab_status")).toBeUndefined();
   });
 
-  it("declares payees as reserved and not yet enforceable", async () => {
+  it("declares payees as enforced on chain, and allow_any_payee as the only way to skip them", async () => {
     const { client } = await connected();
     const { tools } = await client.listTools();
     const openTab = tools.find((t) => t.name === "open_tab")!;
-    const payees = (openTab.inputSchema.properties as Record<string, { description?: string }>)
-      .payees;
+    const props = openTab.inputSchema.properties as Record<string, { description?: string; type?: string }>;
 
-    expect(payees).toBeDefined();
-    expect(payees.description).toMatch(/NOT YET ENFORCEABLE/);
-    expect((openTab.inputSchema.required as string[]) ?? []).not.toContain("payees");
+    expect(props.payees.description).toMatch(/Enforced on chain/);
+    expect(props.allow_any_payee.type).toBe("boolean");
+    expect(props.allow_any_payee.description).toMatch(/ANY address/);
+    expect(openTab.description).toMatch(/no list does not mean anyone/);
+    expect(openTab.description).toMatch(/only the human signer can change the list/);
+    // Neither is schema-required: the refusal, with its explanation, is open_tab's.
+    expect((openTab.inputSchema.required as string[]).sort()).toEqual(["limit", "window"]);
+  });
+
+  it("refuses a tab with no payees and no allow_any_payee before touching the network or a key", async () => {
+    const { client } = await connected();
+    const result = await client.callTool({ name: "open_tab", arguments: { limit: "0.001", window: "PT10M" } });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toMatch(/open_tab refused: no payees, and allow_any_payee is not true/);
   });
 
   /*

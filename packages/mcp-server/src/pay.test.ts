@@ -200,6 +200,33 @@ describe("pay_and_fetch", () => {
     expect(message.match(/refused/g)).toHaveLength(1);
   });
 
+  it("words a payee-allowlist refusal as the account's policy, naming the payee, and puts the flag on the receipt", async () => {
+    const { pay, createPayload, signatures, store } = setup("1000");
+    const restricted: Tab = { ...tab, payees: ["GOTHER"], payeeEnforcement: "on-chain", allowAnyPayee: false };
+    createPayload.mockRejectedValueOnce(new AccountRefusal("HostError: Error(Auth, InvalidAction)\n... Error(Contract, #3901) ..."));
+
+    const message = await pay(restricted, { url: URL, max_amount: "0.001" }).then(() => "", (e: Error) => e.message);
+
+    expect(message).toBe(
+      `The smart account's on-chain payee allowlist refused this payment: ${SELLER} is not on this tab's allowlist ` +
+        "(Error(Contract, #3901), PayeeNotAllowed). The agent cannot add payees; the human signer can. Nothing was sent or paid."
+    );
+    expect(signatures).toHaveLength(0);
+    expect(store.receipts(tab.tabId)).toEqual([
+      expect.objectContaining({ kind: "refused", refusedBy: "on-chain policy", to: SELLER, allowAnyPayee: false, reason: message }),
+    ]);
+  });
+
+  it("puts allow_any_payee on every receipt it writes", async () => {
+    const { pay, store } = setup("1000");
+    await pay({ ...tab, allowAnyPayee: true }, { url: URL, max_amount: "0.001" });
+    await pay({ ...tab, allowAnyPayee: true }, { url: URL, max_amount: "0.00001", request_id: "cap" }).catch(() => undefined);
+
+    const receipts = store.receipts(tab.tabId);
+    expect(receipts.map((r) => r.kind)).toEqual(["payment", "refused"]);
+    expect(receipts.every((r) => r.allowAnyPayee === true)).toBe(true);
+  });
+
   it("treats a facilitator verify refusal as nothing paid", async () => {
     let n = 0;
     const { pay, store } = setup("1000", () => (n++ === 0 ? "invalid" : "settled"));
