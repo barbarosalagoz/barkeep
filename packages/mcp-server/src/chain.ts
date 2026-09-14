@@ -147,10 +147,8 @@ export class Chain {
 
       let error: string | null = null;
       if (got.status !== "SUCCESS") {
-        const diag = JSON.stringify(
-          (got as { diagnosticEventsXdr?: unknown }).diagnosticEventsXdr ?? got.resultMetaXdr ?? ""
-        );
-        error = diag.match(/Error\(Contract, #\d+\)/)?.[0] ?? null;
+        const code = contractErrorCode((got as { diagnosticEventsXdr?: xdr.DiagnosticEvent[] }).diagnosticEventsXdr ?? []);
+        error = code === null ? null : `Error(Contract, #${code})`;
       }
 
       const retval = (got as { returnValue?: xdr.ScVal }).returnValue;
@@ -280,6 +278,36 @@ export class Chain {
     const settled = await this.settle(sent.hash);
     return { ...settled, error: settled.error ?? simulationError };
   }
+}
+
+/**
+ * The first contract error code in a transaction's diagnostic events, as the
+ * LEDGER recorded them. The events are XDR, so the code is an ScVal of type
+ * error; an earlier version searched JSON.stringify of these objects for the
+ * text "Error(Contract, #N)", which is never there, and silently fell back to
+ * the simulation's message.
+ */
+export function contractErrorCode(events: xdr.DiagnosticEvent[]): number | null {
+  const find = (v: xdr.ScVal | undefined): number | null => {
+    if (!v) return null;
+    if (v.switch().name === "scvError" && v.error().switch().name === "sceContract") return v.error().contractCode();
+    if (v.switch().name === "scvVec") {
+      for (const item of v.vec() ?? []) {
+        const code = find(item);
+        if (code !== null) return code;
+      }
+    }
+    return null;
+  };
+
+  for (const d of events) {
+    const body = d.event().body().v0();
+    for (const v of [...body.topics(), body.data()]) {
+      const code = find(v);
+      if (code !== null) return code;
+    }
+  }
+  return null;
 }
 
 export const explorerTx = (hash: string): string =>
