@@ -131,6 +131,29 @@ Results, with transaction hashes, are recorded under `doneTests.payAndFetch`,
 `doneTests.demoStack` and `doneTests.payeeAllowlist` in
 `deployments/testnet.json`.
 
+## How it works
+
+A tab is a context rule on a smart account: the agent's key as its only
+signer, a spending limit and a payee allowlist as its policies, an expiry
+ledger. The agent signs a `transfer` on the token under that rule; a
+facilitator that accepts smart-account payers submits it; a receipt lands on
+the bill. [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) walks one payment
+through, names the file for each step, and describes the three traps that
+cost a debugging round each: recording-mode simulation, `transfer` versus
+`execute`, and the delegated signer's missing entry.
+
+## What I found building this
+
+Five things the record did not lead me to expect, each with the hashes or
+commands behind it and where it has or has not been reported. Index in
+[docs/README.md](docs/README.md).
+
+1. [The public x402 facilitator refuses accounts that enforce a cap on chain](docs/findings/01-x402-public-facilitator-refuses-policy-events.md)
+2. [A `stellar-accounts` 0.7.2 signature verifies on another account that lists the same key](docs/findings/02-auth-digest-not-account-scoped.md)
+3. ["Audited" covered none of what I deploy](docs/findings/03-what-audited-covers.md)
+4. [The ed25519 verifier never returns false, so every signing mistake looks the same](docs/findings/04-ed25519-verifier-panics-not-false.md)
+5. [Four places the TR Mock Anchor differs from its own documentation](docs/findings/05-tr-mock-anchor-deviations.md)
+
 ---
 ---
 
@@ -165,6 +188,9 @@ barkeep/
 │   └── testnet-v09.json
 │
 ├── docs/
+│   ├── README.md                    # index of the docs below
+│   ├── HOW_IT_WORKS.md              # one payment walked through, file by file
+│   ├── findings/                    # five things found while building, with their evidence
 │   ├── ARCHITECTURE-v2.md           # the design; §4.1 is the audit position
 │   ├── DEPLOYMENTS.md               # keys, identities, how to redeploy
 │   ├── YELLOW_BELT.md               # the PromptRail submission record, preserved
