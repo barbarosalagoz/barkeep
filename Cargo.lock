@@ -194,6 +194,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "barkeep-payee-allowlist"
+version = "0.1.0"
+dependencies = [
+ "barkeep-policy",
+ "barkeep-smart-account",
+ "barkeep-verifier-ed25519",
+ "ed25519-dalek",
+ "soroban-sdk 26.1.0",
+ "stellar-accounts 0.7.2",
+]
+
+[[package]]
 name = "barkeep-policy"
 version = "0.1.0"
 dependencies = [
