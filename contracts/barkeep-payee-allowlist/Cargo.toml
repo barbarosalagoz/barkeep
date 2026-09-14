@@ -1,0 +1,27 @@
+[package]
+name = "barkeep-payee-allowlist"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Barkeep payee-allowlist policy: caps who a tab can pay"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+# Pinned to stellar-accounts' requirement, not the workspace's soroban-sdk.
+# See contracts/barkeep-policy/Cargo.toml for the full reasoning.
+[dependencies]
+soroban-sdk = "=26.1.0"
+stellar-accounts = "=0.7.2"
+
+# The account, the spending-limit policy and the verifier are here so the tests
+# can put both policies on one real context rule and run the account's own
+# __check_auth over them, rather than calling this policy in isolation.
+[dev-dependencies]
+soroban-sdk = { version = "=26.1.0", features = ["testutils"] }
+ed25519-dalek = "2.1.1"
+barkeep-smart-account = { path = "../barkeep-smart-account" }
+barkeep-policy = { path = "../barkeep-policy" }
+barkeep-verifier-ed25519 = { path = "../barkeep-verifier-ed25519" }

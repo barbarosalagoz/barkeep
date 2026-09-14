@@ -152,6 +152,38 @@ Then check the deployed contracts actually work:
 That runs the §4 done-test against the live contracts: each verifier accepts a
 known-good signature fixture and rejects a bad one. It is read-only.
 
+## The payee allowlist
+
+`contracts/barkeep-payee-allowlist` (`policyPayeeAllowlist` in
+`deployments/testnet.json`) is Barkeep's own policy contract, not
+OpenZeppelin's: `stellar-accounts` 0.7.2 ships no payee allowlist. It is
+unaudited like everything else here.
+
+```sh
+stellar contract build --package barkeep-payee-allowlist
+stellar contract deploy --wasm target/wasm32v1-none/release/barkeep_payee_allowlist.wasm \
+  --source barkeep-testnet-deployer --network testnet
+```
+
+`open_tab` installs it on the tab's rule next to the spending limit. Changing a
+live tab's list is the human signer's job, not a tool: `add_payee` and
+`remove_payee` on the policy, authorised by the account under rule 0.
+`remove_payee` refuses to empty the list (3902); close the tab instead.
+
+```text
+# add a payee to tab rule <id> (the account authorises through rule 0's signer)
+add_payee(context_rule_id: <id>, payee: <G... or C...>, smart_account: <account id>)
+```
+
+`packages/mcp-server/scripts/payee-allowlist-testnet.mjs` does exactly this in
+test A3, through `Chain.send` with the admin key and rule 0. The done-tests are
+recorded under `doneTests.payeeAllowlist`.
+
+Today the admin key that can change the list sits in the same environment as
+the agent key (`bin/barkeep-mcp` reads both). The contract stops the agent's
+*key*; it does not stop a process holding both keys. The passkey signer is what
+separates them.
+
 ## The 4529d70 deployment, alongside 0.7.2
 
 `deployments/testnet-v09.json` records a second, independent set of the same

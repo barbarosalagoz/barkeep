@@ -10,9 +10,9 @@
  *
  * Signing here is not paying. The facilitator rebuilds the envelope and
  * submits; this module only proves, by simulating with the signed entry, that
- * the account's __check_auth and the spending-limit policy accept it. A tab
- * over its cap is refused at that simulation with Error(Contract, #3221), so
- * nothing is sent to the seller.
+ * the account's __check_auth and the rule's policies accept it. A tab over its
+ * cap is refused at that simulation with Error(Contract, #3221), and a payee
+ * off its allowlist with #3901, so nothing is sent to the seller.
  */
 
 import { Account, BASE_FEE, Keypair, Operation, TransactionBuilder, authorizeEntry, nativeToScVal, rpc, xdr } from "@stellar/stellar-sdk";
@@ -33,6 +33,8 @@ const REFUSALS: Record<string, string> = {
   "3000": "ContextRuleNotFound -- the tab is closed",
   "3002": "UnvalidatedContext -- the tab has expired",
   "3221": "SpendingLimitExceeded -- over the tab's remaining cap",
+  "3901": "PayeeNotAllowed -- the payee is not on the tab's allowlist",
+  "3903": "NotAllowed -- the payee allowlist could not read the destination",
 };
 
 /** The contract error from a simulation failure, not the whole diagnostic event log. */

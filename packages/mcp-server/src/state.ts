@@ -45,14 +45,21 @@ export interface Tab {
   /** Public key of the agent session signer. Never the secret. */
   agentPublicKey: string;
   /**
-   * Allowlisted payees, or null when the tab does not constrain them.
-   *
-   * Null is the only value today: payee_allowlist is not written, so nothing
-   * on chain restricts a destination. Kept as a field, rather than omitted, so
-   * that adding enforcement later is additive -- see tabs.ts.
+   * The payees the tab's rule may transfer to, as installed in the
+   * payee-allowlist policy at open time, or null on a tab opened with
+   * allow_any_payee. tab_status re-reads the list from the chain; this copy is
+   * what was asked for.
    */
   payees: string[] | null;
   payeeEnforcement: PayeeEnforcement;
+  /**
+   * True when the tab was opened with allow_any_payee: no allowlist on its
+   * rule. Absent on tabs opened before the allowlist existed, which could all
+   * pay anyone; read it through `allowsAnyPayee`.
+   */
+  allowAnyPayee?: boolean;
+  /** The payee-allowlist policy installed on the rule, when payees is set. */
+  payeeAllowlistPolicy?: string;
   status: "open" | "closed";
   openedAt: string;
   openTx: string;
@@ -81,7 +88,17 @@ export interface Receipt {
   reason?: string;
   refusedBy?: "on-chain policy" | "per-call cap" | "seller's facilitator" | "payment terms" | "signing";
   note?: string;
+  /**
+   * The tab's allow_any_payee at the time of writing, on every receipt, so a
+   * line of the bill says on its own whether its payee was restricted. Absent
+   * on receipts written before the allowlist existed.
+   */
+  allowAnyPayee?: boolean;
 }
+
+/** Whether a tab can pay anyone. Tabs from before the allowlist could. */
+export const allowsAnyPayee = (tab: Pick<Tab, "allowAnyPayee" | "payeeEnforcement">): boolean =>
+  tab.allowAnyPayee ?? tab.payeeEnforcement !== "on-chain";
 
 /**
  * One pay_and_fetch request, keyed for idempotency.

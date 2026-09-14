@@ -25,11 +25,12 @@
 //! - `period_ledgers` cannot be changed after install; a different window means
 //!   reinstalling the policy on that rule.
 //!
-//! Still to write: `payee_allowlist`, which caps *who* the tab can pay.
+//! What caps *who* the tab can pay is a separate contract,
+//! `contracts/barkeep-payee-allowlist`, installed on the same rule.
 //! `stellar-accounts` 0.7.2 ships only `simple_threshold`,
-//! `weighted_threshold` and `spending_limit`, so the allowlist has to be
-//! written by us, and will be unaudited like every other contract this repo
-//! deploys (§4, §10 risk 1, Week 2 in §12).
+//! `weighted_threshold` and `spending_limit`, so the allowlist was written by
+//! us, and is unaudited like every other contract this repo deploys (§4,
+//! §10 risk 1).
 
 use soroban_sdk::{contract, contractimpl, Address, Env, Val, Vec};
 use stellar_accounts::{

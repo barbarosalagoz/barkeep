@@ -2,16 +2,17 @@
  * Opening, reading and closing a tab.
  *
  * A tab IS an on-chain context rule: a CallContract(token) rule carrying the
- * agent's session key as its only signer, a spending-limit policy, and an
- * expiry ledger. Opening one adds the rule; closing one removes it. Everything
- * that matters is the chain's; this module's records are a convenience index,
- * and tabStatus deliberately re-reads the chain rather than trusting them.
+ * agent's session key as its only signer, a spending-limit policy, a
+ * payee-allowlist policy (unless opened with allow_any_payee), and an expiry
+ * ledger. Opening one adds the rule; closing one removes it. Everything that
+ * matters is the chain's; this module's records are a convenience index, and
+ * tabStatus deliberately re-reads the chain rather than trusting them.
  */
 
-import { Address, Keypair, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Address, Keypair, StrKey, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
 
 import type { Chain } from "./chain.ts";
-import type { Receipt, Store, Tab } from "./state.ts";
+import { allowsAnyPayee, type Receipt, type Store, type Tab } from "./state.ts";
 import { rawEd25519Key } from "./keys.ts";
 
 /** Testnet closes a ledger roughly every 5 seconds. */
@@ -25,6 +26,8 @@ export interface TabConfig {
   /** One sentence saying what the token is; shown once per output. */
   tokenDescription: string;
   policyContract: string;
+  /** contracts/barkeep-payee-allowlist, installed on every tab not opened with allow_any_payee. */
+  payeeAllowlistPolicy: string;
   verifierEd25519: string;
   smartAccount: string;
   /** The Default rule created at construction; admin operations authorise against it. */
@@ -112,12 +115,80 @@ const tabId = (): string =>
 export interface OpenTabArgs {
   limit: string;
   window: string;
-  /**
-   * Reserved. Not accepted yet -- see the error thrown below and §4/§10 risk 1.
-   * Declared here so that adding enforcement later is additive.
-   */
+  /** Who the tab may pay, enforced on chain by the payee-allowlist policy. */
   payees?: string[];
+  /** Must be exactly `true` to open a tab with no allowlist. */
+  allow_any_payee?: boolean;
 }
+
+/** The payee-allowlist policy's own cap (MAX_PAYEES in the contract). */
+export const MAX_PAYEES = 20;
+
+/**
+ * What open_tab will install for payees, or why it refuses.
+ *
+ * FAIL CLOSED. An absent or empty list is not "anyone": it is refused unless
+ * the caller says allow_any_payee: true, in so many words. The contract refuses
+ * an empty list too (3902), but it cannot refuse a rule that simply lacks the
+ * policy -- that is what allow_any_payee builds -- so the absent case is caught
+ * here, before anything is signed.
+ */
+export function payeeSelection(args: Pick<OpenTabArgs, "payees" | "allow_any_payee">): { payees: string[] | null; allowAnyPayee: boolean } {
+  const payees = args.payees ?? [];
+
+  if (args.allow_any_payee === true) {
+    if (payees.length > 0) {
+      throw new Error(
+        "open_tab refused: payees and allow_any_payee: true contradict each other. Pass payees to restrict " +
+          "this tab on chain, or allow_any_payee: true with no payees. Nothing was sent."
+      );
+    }
+    return { payees: null, allowAnyPayee: true };
+  }
+
+  if (payees.length === 0) {
+    throw new Error(
+      "open_tab refused: no payees, and allow_any_payee is not true. An empty or absent payee list does not " +
+        "mean anyone. Pass payees (G... or C... addresses) to restrict who this tab can pay, enforced on chain, " +
+        "or allow_any_payee: true to open a tab that can pay anyone up to its cap. Nothing was sent."
+    );
+  }
+
+  if (payees.length > MAX_PAYEES) {
+    throw new Error(`open_tab refused: ${payees.length} payees; the allowlist holds at most ${MAX_PAYEES}. Nothing was sent.`);
+  }
+
+  const cleaned = payees.map((p) => p.trim());
+  for (const p of cleaned) {
+    if (StrKey.isValidMed25519PublicKey(p)) {
+      throw new Error(
+        `open_tab refused: ${p} is a muxed (M...) address. The allowlist matches the transfer's destination ` +
+          "exactly and refuses muxed destinations; list the underlying G... account. Nothing was sent."
+      );
+    }
+    if (!StrKey.isValidEd25519PublicKey(p) && !StrKey.isValidContract(p)) {
+      throw new Error(`open_tab refused: "${p}" is not a Stellar account (G...) or contract (C...) address. Nothing was sent.`);
+    }
+  }
+
+  const duplicate = cleaned.find((p, i) => cleaned.indexOf(p) !== i);
+  if (duplicate) throw new Error(`open_tab refused: ${duplicate} is listed twice. Nothing was sent.`);
+
+  return { payees: cleaned, allowAnyPayee: false };
+}
+
+/*
+ * A Soroban map must reach the host with its keys in ascending order, or the
+ * host refuses the value. Policy addresses are all contracts, which order by
+ * their 32-byte ids.
+ */
+const policyMap = (entries: [string, xdr.ScVal][]): xdr.ScVal =>
+  xdr.ScVal.scvMap(
+    entries
+      .map(([id, val]) => ({ key: StrKey.decodeContract(id), id, val }))
+      .sort((a, b) => Buffer.compare(a.key, b.key))
+      .map(({ id, val }) => new xdr.ScMapEntry({ key: new Address(id).toScVal(), val }))
+  );
 
 export interface OpenTabResult {
   tabId: string;
@@ -135,29 +206,34 @@ export async function openTab(
   agent: Keypair,
   args: OpenTabArgs
 ): Promise<OpenTabResult> {
-  /*
-   * Refusing `payees` rather than recording it.
-   *
-   * payee_allowlist is not written, so nothing on chain would restrict a
-   * destination. Accepting the list and storing it would produce a tab that
-   * reads as constrained to those payees while the agent can in fact pay
-   * anyone -- the worst of the options, because it is the one that misleads.
-   * The parameter stays in the schema so that adding the policy later is a
-   * capability gain and not a breaking change.
-   */
-  if (args.payees !== undefined) {
-    throw new Error(
-      "payees is not enforceable yet: the payee_allowlist policy contract is not " +
-        "written or deployed, so nothing on chain would restrict destinations. " +
-        "Refusing rather than recording a constraint that does not exist. Open the " +
-        "tab without payees, and keep the cap small: the amount is capped on chain, " +
-        "the destination is not."
-    );
-  }
+  // Every refusal about payees happens here, before a ledger is even read.
+  const { payees, allowAnyPayee } = payeeSelection(args);
 
   const limitBase = toBaseUnits(args.limit, cfg.tokenDecimals);
   const windowLedgers = windowToLedgers(args.window);
   const expiryLedger = (await chain.latestLedger()) + windowLedgers;
+
+  const policies: [string, xdr.ScVal][] = [
+    [
+      cfg.policyContract,
+      nativeToScVal(
+        { spending_limit: limitBase, period_ledgers: windowLedgers },
+        { type: { spending_limit: ["symbol", "i128"], period_ledgers: ["symbol", "u32"] } }
+      ),
+    ],
+  ];
+
+  if (payees) {
+    policies.push([
+      cfg.payeeAllowlistPolicy,
+      xdr.ScVal.scvMap([
+        new xdr.ScMapEntry({
+          key: xdr.ScVal.scvSymbol("payees"),
+          val: xdr.ScVal.scvVec(payees.map((p) => new Address(p).toScVal())),
+        }),
+      ]),
+    ]);
+  }
 
   const result = await chain.send(
     {
@@ -177,15 +253,7 @@ export async function openTab(
             xdr.ScVal.scvBytes(Buffer.from(rawEd25519Key(agent.publicKey()))),
           ]),
         ]),
-        xdr.ScVal.scvMap([
-          new xdr.ScMapEntry({
-            key: new Address(cfg.policyContract).toScVal(),
-            val: nativeToScVal(
-              { spending_limit: limitBase, period_ledgers: windowLedgers },
-              { type: { spending_limit: ["symbol", "i128"], period_ledgers: ["symbol", "u32"] } }
-            ),
-          }),
-        ]),
+        policyMap(policies),
       ],
     },
     { signWith: admin, contextRuleId: cfg.adminContextRuleId }
@@ -212,23 +280,24 @@ export async function openTab(
     window: args.window.trim(),
     expiryLedger,
     agentPublicKey: agent.publicKey(),
-    payees: null,
-    payeeEnforcement: "none",
+    payees,
+    payeeEnforcement: payees ? "on-chain" : "none",
+    allowAnyPayee,
+    ...(payees ? { payeeAllowlistPolicy: cfg.payeeAllowlistPolicy } : {}),
     status: "open",
     openedAt: new Date().toISOString(),
     openTx: result.hash!,
   };
 
   store.putTab(tab);
-  store.appendReceipt({ tabId: tab.tabId, at: tab.openedAt, kind: "open", tx: tab.openTx });
+  store.appendReceipt({ tabId: tab.tabId, at: tab.openedAt, kind: "open", tx: tab.openTx, allowAnyPayee });
 
   return { tabId: tab.tabId, contextRuleId, expiryLedger, tx: result.hash!, tab };
 }
 
-/** snake_case, like every other tool's output. */
 /**
  * snake_case, like every other tool's output. Order is reading order: the
- * numbers, then the bill, then the standing caveat about payees last.
+ * numbers, then the bill, then who the tab can pay, last.
  */
 export interface TabStatus {
   tab_id: string;
@@ -244,21 +313,33 @@ export interface TabStatus {
   /** Only conditions that change, e.g. an expired tab. Absent when there are none. */
   warnings?: string[];
   receipts: Record<string, unknown>[];
+  /** True when nothing on chain restricts who this tab pays. */
+  allow_any_payee: boolean;
   payees: string;
 }
 
-/** The standing caveat, worded once for open_tab and tab_status. */
+/** Who a tab can pay, worded once for open_tab and tab_status. */
 export const PAYEES_NOT_RESTRICTED =
-  "Not restricted. The cap limits how much this tab can spend, not who it pays: no payee allowlist exists on chain yet.";
+  "Not restricted: this tab was opened with allow_any_payee. The cap limits how much it can spend, not who it pays.";
 
-export const describePayees = (tab: Pick<Tab, "payeeEnforcement" | "payees">): string =>
-  tab.payeeEnforcement === "none" || !tab.payees ? PAYEES_NOT_RESTRICTED : `Restricted on chain to: ${tab.payees.join(", ")}`;
+export const describePayees = (tab: Pick<Tab, "payeeEnforcement" | "payees" | "allowAnyPayee">): string =>
+  allowsAnyPayee(tab) || !tab.payees
+    ? PAYEES_NOT_RESTRICTED
+    : `Restricted on chain to: ${tab.payees.join(", ")}. The payee-allowlist policy refuses a transfer to anyone else ` +
+      `(Error(Contract, #3901)); only the human signer can change the list.`;
 
 /**
  * A stored receipt as tab_status reports it: snake_case, and the amount joined
  * with its asset. The log on disk keeps its own shape; this is presentation.
+ *
+ * allow_any_payee is on every line. A receipt written before the allowlist
+ * existed did not record it; `tab` supplies the tab's value for those.
  */
-export function reportReceipt(r: Receipt, cfg: Pick<TabConfig, "tokenSymbol">): Record<string, unknown> {
+export function reportReceipt(
+  r: Receipt,
+  cfg: Pick<TabConfig, "tokenSymbol">,
+  tab?: Pick<Tab, "payeeEnforcement" | "allowAnyPayee">
+): Record<string, unknown> {
   const out: Record<string, unknown> = { at: r.at, kind: r.kind };
   if (r.amount !== undefined) out.amount = `${r.amount} ${r.asset ?? cfg.tokenSymbol}`;
   if (r.endpoint !== undefined) out.endpoint = r.endpoint;
@@ -267,7 +348,36 @@ export function reportReceipt(r: Receipt, cfg: Pick<TabConfig, "tokenSymbol">): 
   if (r.refusedBy !== undefined) out.refused_by = r.refusedBy;
   if (r.reason !== undefined) out.reason = r.reason;
   if (r.note !== undefined) out.note = r.note;
+  const allowAny = r.allowAnyPayee ?? (tab ? allowsAnyPayee(tab) : undefined);
+  if (allowAny !== undefined) out.allow_any_payee = allowAny;
   return out;
+}
+
+/**
+ * Who the tab's rule can pay, read from the chain: the rule's policies, and
+ * the allowlist's entries if one is installed. The human signer can change the
+ * list after open_tab, so the stored copy is not the answer.
+ */
+export async function readPayees(
+  chain: Chain,
+  cfg: TabConfig,
+  tab: Pick<Tab, "contextRuleId">
+): Promise<{ allowAnyPayee: boolean; payees: string[] | null }> {
+  const rule = (await chain.read({
+    contract: cfg.smartAccount,
+    fn: "get_context_rule",
+    args: [xdr.ScVal.scvU32(tab.contextRuleId)],
+  })) as { policies: string[] };
+
+  if (!rule.policies.includes(cfg.payeeAllowlistPolicy)) return { allowAnyPayee: true, payees: null };
+
+  const payees = (await chain.read({
+    contract: cfg.payeeAllowlistPolicy,
+    fn: "get_payees",
+    args: [xdr.ScVal.scvU32(tab.contextRuleId), new Address(cfg.smartAccount).toScVal()],
+  })) as string[];
+
+  return { allowAnyPayee: false, payees };
 }
 
 /** The policy's own record of a tab's cap and rolling-window spend, in base units. */
@@ -305,9 +415,11 @@ export async function tabStatus(
     throw new Error(tabIdArg ? `no tab with id ${tabIdArg}` : "no open tab");
   }
 
-  const [{ limit, spent, periodLedgers }, currentLedger] = await Promise.all([
+  const [{ limit, spent, periodLedgers }, currentLedger, onChain] = await Promise.all([
     readSpend(chain, cfg, tab),
     chain.latestLedger(),
+    // A closed tab's rule is gone; what it could pay is what it was opened with.
+    tab.status === "closed" ? null : readPayees(chain, cfg, tab),
   ]);
   const remaining = limit > spent ? limit - spent : 0n;
 
@@ -323,6 +435,18 @@ export async function tabStatus(
     );
   }
 
+  const payeesNow = onChain
+    ? { ...tab, allowAnyPayee: onChain.allowAnyPayee, payeeEnforcement: onChain.allowAnyPayee ? ("none" as const) : ("on-chain" as const), payees: onChain.payees }
+    : tab;
+
+  if (onChain && onChain.allowAnyPayee !== allowsAnyPayee(tab)) {
+    warnings.push(
+      onChain.allowAnyPayee
+        ? `This tab was recorded as restricted to ${tab.payees?.join(", ")}, but its rule on chain has no payee allowlist: it can pay anyone.`
+        : "This tab was recorded as allow_any_payee, but its rule on chain carries a payee allowlist; the chain's list is shown."
+    );
+  }
+
   return {
     tab_id: tab.tabId,
     status,
@@ -334,8 +458,9 @@ export async function tabStatus(
     expires: describeExpiry(tab.expiryLedger, currentLedger),
     ...(warnings.length ? { warnings } : {}),
     // tab_id is the tab's, stated above; each receipt omits it.
-    receipts: store.receipts(tab.tabId).map((r) => reportReceipt(r, cfg)),
-    payees: describePayees(tab),
+    receipts: store.receipts(tab.tabId).map((r) => reportReceipt(r, cfg, tab)),
+    allow_any_payee: allowsAnyPayee(payeesNow),
+    payees: describePayees(payeesNow),
   };
 }
 
@@ -476,6 +601,7 @@ export async function closeTab(
     tx: closed.closeTx,
     amount: fromBaseUnits(before.spent, cfg.tokenDecimals),
     asset: cfg.tokenSymbol,
+    allowAnyPayee: allowsAnyPayee(tab),
   });
 
   const otherRules = await rulesListingKey(chain, cfg.smartAccount, tab.agentPublicKey).catch(

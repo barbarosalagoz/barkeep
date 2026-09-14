@@ -25,7 +25,7 @@ export function loadDeployment(path?: string): Deployment {
 
   const parsed = JSON.parse(readFileSync(file, "utf8")) as Deployment;
 
-  for (const required of ["smartAccount", "policySpendingLimit", "verifierEd25519", "token"]) {
+  for (const required of ["smartAccount", "policySpendingLimit", "policyPayeeAllowlist", "verifierEd25519", "token"]) {
     if (!parsed.contracts?.[required]?.id) {
       throw new Error(`${file} is missing contracts.${required}.id`);
     }

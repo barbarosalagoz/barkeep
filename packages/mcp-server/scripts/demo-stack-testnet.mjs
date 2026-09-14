@@ -71,7 +71,7 @@ const horizonSource = async (hash) =>
 const { tools } = await client.listTools();
 check(tools.length === 4, "the wrapper starts the server and it lists four tools", tools.map((t) => t.name).join(", "));
 
-const tab = await call("open_tab", { limit: "0.001", window: "PT1H" });
+const tab = await call("open_tab", { limit: "0.001", window: "PT1H", payees: [info.payTo] });
 if (tab.error) throw new Error(tab.error);
 console.log(`\ntab ${tab.tab_id}, rule ${tab.context_rule_id}, cap 0.001, PT1H\n  ${tab.explorer}`);
 

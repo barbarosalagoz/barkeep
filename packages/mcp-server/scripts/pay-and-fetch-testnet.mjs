@@ -160,7 +160,7 @@ console.log(`account      ${C.smartAccount.id}`);
 console.log(`facilitator  ${facilitatorUrl} (fee payer ${facilitatorKp.publicKey()})`);
 console.log(`seller       ${sellerUrl} (payTo ${sellerKp.publicKey()})\n`);
 
-const opened = await call("open_tab", { limit: "0.0005", window: "PT15M" });
+const opened = await call("open_tab", { limit: "0.0005", window: "PT15M", payees: [sellerKp.publicKey()] });
 if (opened.error) throw new Error(opened.error);
 console.log(`tab ${opened.tab_id}, rule ${opened.context_rule_id}, cap 0.0005\n  ${opened.explorer}\n`);
 
@@ -177,8 +177,9 @@ try {
 
   const receipt = s1.receipts?.find((r) => r.kind === "payment" && r.tx === p1.tx);
   check(
-    Boolean(receipt && receipt.amount === "0.0001 TAB" && receipt.endpoint === `${sellerUrl}/cheap` && receipt.at && receipt.tab_id === opened.tab_id),
-    "the receipt log has tx, amount, endpoint, timestamp and tab id",
+    Boolean(receipt && receipt.amount === "0.0001 TAB" && receipt.endpoint === `${sellerUrl}/cheap` && receipt.at && s1.tab_id === opened.tab_id),
+    // Since #5 a receipt omits tab_id: it is tab_status's, stated once above the receipts.
+    "the receipt log has tx, amount, endpoint and timestamp, under the tab's id",
     JSON.stringify(receipt)
   );
 
