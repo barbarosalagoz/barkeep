@@ -267,43 +267,69 @@
     },
     "demoStack": {
       "script": "packages/mcp-server/scripts/demo-stack-testnet.mjs",
-      "note": "bin/barkeep-mcp over stdio -> src/seller.ts (persistent) -> src/facilitator.ts (own key) -> Testnet. 9/9. Sources and successful flags cross-checked on Horizon.",
+      "date": "2026-09-14",
+      "note": "bin/barkeep-mcp over stdio -> src/seller.ts (persistent, barkeep-testnet-seller) -> src/facilitator.ts (own key) -> Testnet. 9/9. Re-run after payee_allowlist merged (main d6be46f): the tab is opened with payees: [the seller], so its rule carries the allowlist as well as the spending limit. Every hash cross-checked on Horizon (successful, ledger, source, fee). Replaces the 2026-09-13 run, which predated the allowlist.",
+      "seller": "GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7",
       "openTab": {
-        "tx": "d69255b2a60e97f70f2757168f7bfa0aad34e81c61283380c962af70e1c239cc",
-        "ledger": 4652370,
+        "tx": "219c0e058ea838d23fc3b852e0286088484faeb57f9c74f3e94c3a0aa4506d5a",
+        "ledger": 4673651,
         "successful": true,
         "source": "deployer",
-        "contextRuleId": 14
+        "feeCharged": 179899,
+        "contextRuleId": 28,
+        "payees": [
+          "GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7"
+        ],
+        "allowAnyPayee": false,
+        "cap": "0.001",
+        "window": "PT1H"
       },
       "haiku": {
-        "tx": "d622b81a1066dd4054276ffa90ccbf37b76819752a4f4ddb87b2a5a8ab0ea8a8",
-        "ledger": 4652371,
+        "tx": "7f0ec6c1b882a5af712bab10771afad45ea02b58c3ec207829307267ea13d573",
+        "ledger": 4673653,
         "successful": true,
-        "source": "facilitator"
+        "source": "facilitator",
+        "feeCharged": 408538,
+        "amount": "0.0001",
+        "body": "Seven decimals /\nclose every five seconds -- /\nthe tab remembers"
       },
       "twoUrlsAtOnce": {
         "forecast": {
-          "tx": "b874b310bed762d431418687cc23805e5f90fdb4e3ea420b33d9d5a11be94c6c",
-          "ledger": 4652373,
+          "tx": "584f600e724b62bcc00d3a95a7999b2cc60bccf954a93f04af4a1bc1c63b34bd",
+          "ledger": 4673655,
           "successful": true,
-          "source": "facilitator"
+          "source": "facilitator",
+          "feeCharged": 64943
         },
         "haiku": {
-          "tx": "a8cb4b48edbbf44297ccdf40bf1c7639b9ee2eb5a8ae7d3dcc6260f4497c7374",
-          "ledger": 4652374,
+          "tx": "09919c21cf2fa0d7b82a3e7cc9033541190023483365ea1283e883ca4f8b4a7a",
+          "ledger": 4673656,
           "successful": true,
-          "source": "facilitator"
+          "source": "facilitator",
+          "feeCharged": 65019
         },
         "note": "settled in consecutive ledgers: the facilitator serialises settlements"
       },
-      "datasetOverMaxAmount": "Price 0.002 exceeds max_amount 0.001. Nothing was signed or paid.",
-      "tabStatusSpent": "0.00045",
+      "datasetOverMaxAmount": "Price 0.002 TAB exceeds max_amount 0.001 TAB. Nothing was signed or paid.",
+      "tabStatusSpent": "0.00045 TAB",
+      "tabStatusRemaining": "0.00055 TAB",
       "paymentReceipts": 3,
       "closeTab": {
-        "tx": "0f2fca5e9b73af5ab5f01bce12b85e97a69a207de2967976351775914e03fe33",
-        "ledger": 4652376,
+        "tx": "a63f510ba511148b82260d64a72f66ca2c2936c21b3b91626ffc4968c6fef1ab",
+        "ledger": 4673657,
         "successful": true,
-        "source": "deployer"
+        "source": "deployer",
+        "feeCharged": 41242,
+        "finalSpent": "0.00045"
+      },
+      "previousRun": {
+        "date": "2026-09-13",
+        "note": "Before the allowlist; tab opened with no payee restriction (allow_any_payee did not exist yet). Kept as hashes only.",
+        "openTab": "d69255b2a60e97f70f2757168f7bfa0aad34e81c61283380c962af70e1c239cc",
+        "haiku": "d622b81a1066dd4054276ffa90ccbf37b76819752a4f4ddb87b2a5a8ab0ea8a8",
+        "forecast": "b874b310bed762d431418687cc23805e5f90fdb4e3ea420b33d9d5a11be94c6c",
+        "secondHaiku": "a8cb4b48edbbf44297ccdf40bf1c7639b9ee2eb5a8ae7d3dcc6260f4497c7374",
+        "closeTab": "0f2fca5e9b73af5ab5f01bce12b85e97a69a207de2967976351775914e03fe33"
       }
     },
     "payeeAllowlist": {
