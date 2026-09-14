@@ -28,77 +28,13 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export type PayeeEnforcement = "none" | "on-chain";
-
-export interface Tab {
-  tabId: string;
-  /** The on-chain context rule this tab IS. Closing the tab removes it. */
-  contextRuleId: number;
-  policyContract: string;
-  token: string;
-  /** Cap in token base units (stroops), as a decimal string. */
-  limit: string;
-  windowLedgers: number;
-  /** The window as requested, ISO-8601 (e.g. PT1H). Absent on tabs opened before it was stored. */
-  window?: string;
-  expiryLedger: number;
-  /** Public key of the agent session signer. Never the secret. */
-  agentPublicKey: string;
-  /**
-   * The payees the tab's rule may transfer to, as installed in the
-   * payee-allowlist policy at open time, or null on a tab opened with
-   * allow_any_payee. tab_status re-reads the list from the chain; this copy is
-   * what was asked for.
-   */
-  payees: string[] | null;
-  payeeEnforcement: PayeeEnforcement;
-  /**
-   * True when the tab was opened with allow_any_payee: no allowlist on its
-   * rule. Absent on tabs opened before the allowlist existed, which could all
-   * pay anyone; read it through `allowsAnyPayee`.
-   */
-  allowAnyPayee?: boolean;
-  /** The payee-allowlist policy installed on the rule, when payees is set. */
-  payeeAllowlistPolicy?: string;
-  status: "open" | "closed";
-  openedAt: string;
-  openTx: string;
-  closedAt?: string;
-  closeTx?: string;
-}
-
-export interface Receipt {
-  tabId: string;
-  at: string;
-  /**
-   * payment      settled; `tx` is the transfer
-   * refused      a payment was attempted and did not happen; `reason` and
-   *              `refusedBy` say why and who stopped it
-   * unconfirmed  a payment signature went out and no settlement came back
-   */
-  kind: "open" | "close" | "payment" | "refused" | "unconfirmed";
-  /** Decimal token units. On refused/unconfirmed, the price that was asked. */
-  amount?: string;
-  /** Token symbol the amount is in. Absent on receipts written before it was recorded. */
-  asset?: string;
-  to?: string;
-  tx?: string;
-  /** The URL paid for, on payment, refused and unconfirmed receipts. */
-  endpoint?: string;
-  reason?: string;
-  refusedBy?: "on-chain policy" | "per-call cap" | "seller's facilitator" | "payment terms" | "signing";
-  note?: string;
-  /**
-   * The tab's allow_any_payee at the time of writing, on every receipt, so a
-   * line of the bill says on its own whether its payee was restricted. Absent
-   * on receipts written before the allowlist existed.
-   */
-  allowAnyPayee?: boolean;
-}
-
-/** Whether a tab can pay anyone. Tabs from before the allowlist could. */
-export const allowsAnyPayee = (tab: Pick<Tab, "allowAnyPayee" | "payeeEnforcement">): boolean =>
-  tab.allowAnyPayee ?? tab.payeeEnforcement !== "on-chain";
+/*
+ * The Tab and Receipt shapes are @barkeep/tab-read's, so the bill reads the
+ * files this module writes with the same definitions. Re-exported here so
+ * the server's modules keep importing them from state.ts.
+ */
+export { allowsAnyPayee, type PayeeEnforcement, type Receipt, type Tab } from "@barkeep/tab-read";
+import type { Receipt, Tab } from "@barkeep/tab-read";
 
 /**
  * One pay_and_fetch request, keyed for idempotency.

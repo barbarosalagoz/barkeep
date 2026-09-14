@@ -24,14 +24,12 @@ import {
   authorizeEntry, rpc, scValToNative, xdr,
 } from "@stellar/stellar-sdk";
 
+import { TabReader, type Invocation } from "@barkeep/tab-read";
+
 import { authDigest, buildAuthPayload } from "./authDigest.ts";
 import { rawEd25519Key } from "./keys.ts";
 
-export interface Invocation {
-  contract: string;
-  fn: string;
-  args: xdr.ScVal[];
-}
+export type { Invocation };
 
 export interface SendResult {
   ok: boolean;
@@ -56,11 +54,21 @@ export class Chain {
   private readonly cfg: ChainConfig;
   /** Pays the transaction fee and sequence number; never authorises anything. */
   private readonly submitter: Keypair;
+  /**
+   * Reads go through @barkeep/tab-read's reader, the same code the bill uses,
+   * with the submitter's public key as the simulation source.
+   */
+  private readonly reader: TabReader;
 
   constructor(cfg: ChainConfig, submitter: Keypair) {
     this.cfg = cfg;
     this.submitter = submitter;
-    this.server = new rpc.Server(cfg.rpcUrl);
+    this.reader = new TabReader({
+      rpcUrl: cfg.rpcUrl,
+      networkPassphrase: cfg.networkPassphrase,
+      sourceAccount: submitter.publicKey(),
+    });
+    this.server = this.reader.server;
   }
 
   get network(): string {
@@ -71,25 +79,13 @@ export class Chain {
     return this.cfg.smartAccount;
   }
 
-  async latestLedger(): Promise<number> {
-    return (await this.server.getLatestLedger()).sequence;
+  latestLedger(): Promise<number> {
+    return this.reader.latestLedger();
   }
 
   /** Read-only call: simulate and return the value, without touching the ledger. */
-  async read({ contract, fn, args }: Invocation): Promise<unknown> {
-    const source = await this.server.getAccount(this.submitter.publicKey());
-    const tx = new TransactionBuilder(source, {
-      fee: BASE_FEE,
-      networkPassphrase: this.cfg.networkPassphrase,
-    })
-      .addOperation(Operation.invokeContractFunction({ contract, function: fn, args }))
-      .setTimeout(30)
-      .build();
-
-    const sim = await this.server.simulateTransaction(tx);
-
-    if (rpc.Api.isSimulationError(sim)) throw new Error(`${fn}: ${sim.error}`);
-    return sim.result?.retval ? scValToNative(sim.result.retval) : undefined;
+  read(invocation: Invocation): Promise<unknown> {
+    return this.reader.read(invocation);
   }
 
   /**
@@ -310,5 +306,4 @@ export function contractErrorCode(events: xdr.DiagnosticEvent[]): number | null 
   return null;
 }
 
-export const explorerTx = (hash: string): string =>
-  `https://stellar.expert/explorer/testnet/tx/${hash}`;
+export { explorerTx } from "@barkeep/tab-read";

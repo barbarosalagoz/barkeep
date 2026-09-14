@@ -10,8 +10,8 @@ import { describeOtherRules, presentPayResult } from "./index.ts";
 import { Store, type Tab } from "./state.ts";
 import { rawEd25519Key } from "./keys.ts";
 import {
-  MAX_PAYEES, PAYEES_NOT_RESTRICTED, describeExpiry, describePayees, describeWindow, ledgersToWindow, payeeSelection,
-  reportReceipt, rulesListingKey, tabStatus, withUnit, type TabConfig,
+  MAX_PAYEES, PAYEES_NOT_RESTRICTED, describePayees, payeeSelection, reportReceipt, rulesListingKey, tabStatus,
+  type TabConfig,
 } from "./tabs.ts";
 
 /*
@@ -112,28 +112,6 @@ describe("describeOtherRules", () => {
       "The agent key is on no other rule. Checked all 2 rules on the account."
     );
     expect(describeOtherRules({ error: "rpc down" })).toMatch(/^Not checked \(rpc down\)\. The agent key may still be a signer/);
-  });
-});
-
-describe("amounts", () => {
-  it("always carry the token symbol", () => {
-    expect(withUnit(1000n, { tokenDecimals: 7, tokenSymbol: "TAB" })).toBe("0.0001 TAB");
-    expect(withUnit(0n, { tokenDecimals: 7, tokenSymbol: "TAB" })).toBe("0 TAB");
-  });
-});
-
-describe("time", () => {
-  it("shows the window as asked and in ledgers", () => {
-    expect(describeWindow("PT1H", 720)).toBe("PT1H (720 ledgers)");
-    expect(ledgersToWindow(720)).toBe("PT1H");
-    expect(ledgersToWindow(180)).toBe("PT15M");
-    expect(ledgersToWindow(17280)).toBe("P1D");
-    expect(describeWindow(undefined, 18)).toBe("PT1M30S (18 ledgers)");
-  });
-
-  it("shows expiry as a ledger and a rough time", () => {
-    expect(describeExpiry(4653477, 4652761)).toBe("at ledger 4653477, in ~60 min (716 ledgers)");
-    expect(describeExpiry(100, 112)).toBe("at ledger 100, ~1 min ago (12 ledgers)");
   });
 });
 

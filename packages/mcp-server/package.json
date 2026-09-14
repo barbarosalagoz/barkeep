@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@barkeep/core": "*",
+    "@barkeep/tab-read": "*",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@stellar/stellar-sdk": "^16.3.0",
     "@x402/core": "2.25.0",
