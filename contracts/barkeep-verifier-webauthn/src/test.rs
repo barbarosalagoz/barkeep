@@ -8,7 +8,7 @@ use p256::{
     elliptic_curve::sec1::ToEncodedPoint,
     SecretKey as Secp256r1SecretKey,
 };
-use soroban_sdk::{Address, Bytes, BytesN, Env, Vec};
+use soroban_sdk::{xdr::ToXdr, Address, Bytes, BytesN, Env, Vec};
 use stellar_accounts::verifiers::{
     utils::base64_url_encode,
     webauthn::{
@@ -116,7 +116,7 @@ fn verifies_a_known_good_passkey_assertion() {
     let f = fixture();
     let client = WebAuthnVerifierClient::new(&f.env, &f.client_id);
 
-    assert!(client.verify(&f.payload, &f.key_data, &f.sig_data));
+    assert!(client.verify(&f.payload, &f.key_data, &f.sig_data.clone().to_xdr(&f.env)));
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn verifies_when_key_data_carries_a_credential_id_suffix() {
     let mut key_data = f.key_data.clone();
     key_data.extend_from_array(&[0xab; 20]);
 
-    assert!(client.verify(&f.payload, &key_data, &f.sig_data));
+    assert!(client.verify(&f.payload, &key_data, &f.sig_data.clone().to_xdr(&f.env)));
 }
 
 #[test]
@@ -144,7 +144,7 @@ fn rejects_a_tampered_signature() {
         ..f.sig_data.clone()
     };
 
-    client.verify(&f.payload, &f.key_data, &sig_data);
+    client.verify(&f.payload, &f.key_data, &sig_data.to_xdr(&f.env));
 }
 
 /// The challenge binds the assertion to one payload; reusing it must fail.
@@ -156,7 +156,7 @@ fn rejects_an_assertion_replayed_against_another_payload() {
 
     let other = Bytes::from_array(&f.env, &[3u8; 32]);
 
-    client.verify(&other, &f.key_data, &f.sig_data);
+    client.verify(&other, &f.key_data, &f.sig_data.clone().to_xdr(&f.env));
 }
 
 /// A signing ceremony ("webauthn.create") is not an assertion ("webauthn.get").
@@ -166,7 +166,7 @@ fn rejects_a_wrong_client_data_type() {
     let f = fixture_with(GOOD_FLAGS, "webauthn.create");
     let client = WebAuthnVerifierClient::new(&f.env, &f.client_id);
 
-    client.verify(&f.payload, &f.key_data, &f.sig_data);
+    client.verify(&f.payload, &f.key_data, &f.sig_data.clone().to_xdr(&f.env));
 }
 
 /// User Verified unset means no biometric/PIN: the account must not accept it.
@@ -176,7 +176,38 @@ fn rejects_an_assertion_without_user_verification() {
     let f = fixture_with(AUTH_DATA_FLAGS_UP, "webauthn.get");
     let client = WebAuthnVerifierClient::new(&f.env, &f.client_id);
 
-    client.verify(&f.payload, &f.key_data, &f.sig_data);
+    client.verify(&f.payload, &f.key_data, &f.sig_data.clone().to_xdr(&f.env));
+}
+
+/*
+ * The account hands the verifier whatever Bytes the client put in
+ * AuthPayload.signers. Two ways to get that wrong, two different failures:
+ * bytes that are not XDR at all trap in the host's deserializer before this
+ * contract runs; valid XDR of something other than a WebAuthnSigData is
+ * refused here with 3120. A client that pasted the raw 64-byte signature
+ * where the struct's XDR belongs sees the first.
+ */
+#[test]
+#[should_panic(expected = "Error(Value, InvalidInput)")]
+fn raw_signature_bytes_are_not_xdr_and_trap_in_the_host() {
+    let f = fixture();
+    let client = WebAuthnVerifierClient::new(&f.env, &f.client_id);
+
+    let raw_signature = Bytes::from_array(&f.env, &f.sig_data.signature.to_array());
+
+    client.verify(&f.payload, &f.key_data, &raw_signature);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #3120)")]
+fn rejects_xdr_of_something_other_than_webauthn_sig_data() {
+    let f = fixture();
+    let client = WebAuthnVerifierClient::new(&f.env, &f.client_id);
+
+    // Well-formed XDR, wrong type: a Bytes value, not the struct.
+    let not_the_struct = Bytes::from_array(&f.env, &f.sig_data.signature.to_array()).to_xdr(&f.env);
+
+    client.verify(&f.payload, &f.key_data, &not_the_struct);
 }
 
 #[test]
@@ -227,4 +258,6 @@ fn print_fixture_hex() {
     std::println!("WA_SIG={}", hex(&f.sig_data.signature.to_array()));
     std::println!("WA_AUTHDATA={}", bytes_hex(&f.sig_data.authenticator_data));
     std::println!("WA_CLIENTDATA={}", bytes_hex(&f.sig_data.client_data));
+    // What the account passes: the struct's XDR, as one Bytes value.
+    std::println!("WA_SIGDATA_XDR={}", bytes_hex(&f.sig_data.clone().to_xdr(&f.env)));
 }
