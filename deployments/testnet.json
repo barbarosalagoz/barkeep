@@ -30,10 +30,19 @@
       "audited": false
     },
     "verifierWebAuthn": {
-      "id": "CBZ5BMHGTQAWIGF4ACZCOHLLYSQFKCYXRV5TFWCQ5T3JYFRHEEJHF3KL",
+      "id": "CCMT5OWK66F27EPGKKT6ETTMV6DACMSHQQQMDXT77TBMTDB6HRMA5SCV",
       "crate": "contracts/barkeep-verifier-webauthn",
-      "wasmHash": "2f2daf8ad99b63a6ea56ccf8ab442264e612236e62e5df82201f562fcd0c38dc",
-      "deployTx": "17949daa166f1dcd11c8a62352ff8cf633b7bb53a9d73b5d43730aac996ea978",
+      "wasmHash": "fc18303bd3bfa96afffc6453df2f5a57121a26b98c4a171e3a4e0129aa1c57bf",
+      "uploadTx": "e69dc811aef5fdc16ff3b9c7de46de97ac92cd14bc56e9b9dcb70409c2031168",
+      "deployTx": "3c2ba0752688ece9b4bc4008fcc62499e7311ebdaf84c72c0a37301414e1ee09",
+      "deployLedger": 4689873,
+      "note": "Second deployment, 2026-09-15. verify now takes sig_data as Bytes holding the XDR of a WebAuthnSigData, which is what the account passes. See supersedes and docs/findings/06.",
+      "supersedes": {
+        "id": "CBZ5BMHGTQAWIGF4ACZCOHLLYSQFKCYXRV5TFWCQ5T3JYFRHEEJHF3KL",
+        "wasmHash": "2f2daf8ad99b63a6ea56ccf8ab442264e612236e62e5df82201f562fcd0c38dc",
+        "deployTx": "17949daa166f1dcd11c8a62352ff8cf633b7bb53a9d73b5d43730aac996ea978",
+        "why": "Its verify took sig_data as the WebAuthnSigData struct. The Stellar CLI could call it; the account's authenticate never could, because it passes the signature as one Bytes value and the host refuses to read Bytes as a map: Error(WasmVm, InvalidAction), 'VM call trapped: UnreachableCodeReached', measured by simulation on 2026-09-15 before any passkey was registered. No signer was ever bound to it."
+      },
       "audited": false
     },
     "policySpendingLimit": {
@@ -58,8 +67,24 @@
       "wasmHash": "fde9a23e170d3c3054ffe591ff6839ec836da105c3addf9d7e6a56d4f5465ebd",
       "deployTx": "9972d1cf6c86421f6dbe6735cad0121050ebd18ca4a76f5c9ed368e18b02934a",
       "adminSigner": "GAPL4FFWCJ7TLUYU6USLKLXEFR7QIFVQ3XCEVTKO5MNDBO4IQYV5NK44",
-      "adminSignerNote": "Ed25519 human signer, standing in until a real passkey is registered (needs a browser; see ARCHITECTURE-v2 4.1 and 13).",
-      "audited": false
+      "adminSignerNote": "Ed25519 human signer on rule 0. It stays: the passkey below is on its own Default rule (31), so the account has two human admin paths and neither is 2-of-2. See docs/DEPLOYMENTS.md.",
+      "audited": false,
+      "passkeySigner": {
+        "contextRuleId": 31,
+        "ruleName": "passkey",
+        "contextType": "Default",
+        "policies": [],
+        "validUntil": null,
+        "verifier": "CCMT5OWK66F27EPGKKT6ETTMV6DACMSHQQQMDXT77TBMTDB6HRMA5SCV",
+        "publicKeyHex": "04693aa1b679108665c8eb03ebc8864021f0ef7f1515e1455c72cf654b01500c5d7e8c3ebc65180996390757076c44af8bedc7326cf60195348c77137c9052c4f0",
+        "credentialIdHex": "406862168cea768a9ad4b1186a8c9ee3b5b01765",
+        "keyDataBytes": 85,
+        "addedTx": "47448d91d201bdfda595206cf885f79923b941f28169d49efccb52c8828657bd",
+        "addedBy": "rule 0 (the ed25519 human signer), via packages/mcp-server/scripts/add-passkey-rule-testnet.mjs",
+        "note": "The passkey was created on http://localhost:8000 (scripts/passkey-register.html) and is bound to that origin by the browser. It verifies on chain anyway because the WebAuthn verifier deliberately skips origin and rpIdHash checks (docs/ARCHITECTURE-v2.md section 4). Register again per origin once that gap closes. Not add_signer on rule 0: a rule without policies requires all its signers, which would make every admin call 2-of-2.",
+        "verifiedTx": "f6a66a603e160bb63e539b458acec6b6245f930d54ac8dc2918108397999ce17",
+        "verifiedNote": "First transfer authorised by this passkey alone, ledger 4690054; doneTests.passkeySign."
+      }
     },
     "token": {
       "id": "CBXLQ3TCM6EB6KXBYDQVZ3NJO2SAL5FY5BZPMTLGQPROANSSP7RFHP3V",
@@ -467,6 +492,80 @@
         "payAndFetchP2forced": "3221",
         "payAndFetchRerunP2forced": "3221"
       }
+    },
+    "passkeyRule": {
+      "script": "packages/mcp-server/scripts/add-passkey-rule-testnet.mjs",
+      "tx": "47448d91d201bdfda595206cf885f79923b941f28169d49efccb52c8828657bd",
+      "successful": true,
+      "contextRuleId": 31,
+      "readBack": "Default rule \"passkey\", one External signer on the WebAuthn verifier, key_data 85 bytes, no policies, no expiry",
+      "rulesBefore": 9,
+      "note": "Dry run first (validate, canonicalize_key on the verifier, enforcing simulation signed by rule 0), then --submit. The ed25519 signer on rule 0 is untouched; the agent key stays on rules 1-8, all expired."
+    },
+    "passkeyRehearsal": {
+      "question": "Can an assertion from a real WebAuthn ceremony, wrapped the way passkey-sign-testnet.mjs wraps it, pass __check_auth on a Default rule holding only a passkey?",
+      "answer": "Yes, against the redeployed verifier. A throwaway passkey from a Chromium virtual authenticator (CDP WebAuthn.addVirtualAuthenticator, ctap2, internal, user verification on) went through scripts/passkey-register.html, was added as rule 30, signed one transfer on scripts/passkey-sign.html, and the transfer settled. Rule 30 was removed afterwards. The human's own passkey (rule 31) signed next; see passkeySign.",
+      "addRule": {
+        "tx": "e3767763e4daa61839bd6a5879139997d802bebfab4b6fde1d2c200afb40d486",
+        "contextRuleId": 30,
+        "successful": true
+      },
+      "transfer": {
+        "tx": "42cc207c30036cdd4cf17806dfcb8ae1a829533a6e7dedf52a6ecad0ea167026",
+        "ledger": 4689896,
+        "successful": true,
+        "feeCharged": 230033,
+        "authDigest": "a8fd42bf9472de3ee97ea65c84408226f321e5bad034b5d495f9248bf0deb44b",
+        "assertionFlags": "0x05",
+        "clientDataOrigin": "http://localhost:8001",
+        "sNormalisedToLowS": true,
+        "events": [
+          "transfer CCAO6UVM... -> GASFR7KG... 1000 (TAB)"
+        ],
+        "note": "Enforcing simulation accepted the AuthPayload first; Horizon agrees on successful, ledger and fee."
+      },
+      "removeRule": {
+        "tx": "4867a421380ee04cfe7054fdb9b3ef5158a8927f6c4bd40250f7d3cb573efaa0",
+        "successful": true,
+        "readBackAfter": "Error(Contract, #3000) ContextRuleNotFound"
+      }
+    },
+    "passkeySign": {
+      "script": "packages/mcp-server/scripts/passkey-sign-testnet.mjs",
+      "page": "scripts/passkey-sign.html",
+      "question": "Can the human's own passkey (rule 31), signing in a browser with Touch ID, authorise a transfer from the smart account?",
+      "answer": "Yes. prepare built the transfer and the digest, the page produced the assertion, submit wrapped it and sent it; the ledger accepted it with the passkey as the only signer.",
+      "tx": "f6a66a603e160bb63e539b458acec6b6245f930d54ac8dc2918108397999ce17",
+      "ledger": 4690054,
+      "successful": true,
+      "error": null,
+      "contextRuleId": 31,
+      "action": "transfer 1000 base units of TAB from the smart account to GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7",
+      "authDigest": "a72eae12da20d8d7dc3a060a9c02c2fb5f1ee134d25823aebab0731a524811ba",
+      "authEntry": {
+        "address": "CCAO6UVMZ2JGUAGIQKMVHXKWKD7TZKW2YP77M2NK56MWL6LC66ZZ3FLH",
+        "signatureExpirationLedger": 4724482,
+        "contextRuleIds": [
+          31
+        ]
+      },
+      "assertion": {
+        "signature": "7ac8843b4b9d43a9bbdaf0806f227fc78c8c425fa933c5a7a5f3ac2271f557130793110e51b008ccc671df2914e8e251b0801bc0c3c7e51b70cc057d3513ad5e",
+        "authenticatorData": "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d97631d00000000",
+        "flags": "0x1d (User Present, User Verified, Backup Eligible, Backup State)",
+        "clientDataJSON": "{\"type\":\"webauthn.get\",\"challenge\":\"py6uEtog2NfcOgYKnALC-18e4TTSWCOuurBzGlJIEbo\",\"origin\":\"http://localhost:8000\",\"crossOrigin\":false}",
+        "note": "Read back from the transaction envelope on Horizon, not from local state: the AuthPayload's signer value decodes as WebAuthnSigData (344 bytes of XDR), the challenge is base64url of the digest recomputed from the entry's nonce, expiry and invocation, and s is low-S."
+      },
+      "horizon": {
+        "successful": true,
+        "ledger": 4690054,
+        "feeCharged": 222733,
+        "sourceAccount": "GAM225BSUJZCO3GHNOSW3APCUI5XNX2ECN27A7CAMSLL3EHGEYMWLGHT",
+        "createdAt": "2026-09-15T12:04:17Z"
+      },
+      "events": [
+        "transfer CCAO6UVM... -> GASFR7KG... 1000 (TAB), emitted by CBXLQ3TC..."
+      ]
     }
   },
   "ttlExtension": {

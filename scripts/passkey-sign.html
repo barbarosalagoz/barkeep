@@ -1,0 +1,319 @@
+<!--
+  Barkeep — sign one transaction with the passkey (MANUAL STEP)
+
+  What this is: the second half of a two-step handoff. A script has already
+  built a transaction from the smart account and worked out the 32-byte digest
+  the account will ask the passkey signer for:
+
+      auth_digest = sha256(signature_payload || context_rule_ids.to_xdr())
+
+  That digest arrives in this page's URL fragment (after #), together with the
+  credential id, the rule id and the expiry ledger. A fragment never leaves
+  the browser, and nothing in it is secret: the digest is public the moment
+  the transaction is.
+
+  Click "Sign with passkey". The authenticator signs the digest as a WebAuthn
+  challenge, and the page prints the three values the verifier contract needs
+  (signature, authenticatorData, clientDataJSON) as one JSON blob to paste back
+  into the script, which submits the transaction. The private key never leaves
+  the authenticator, and this page makes no network requests.
+
+  Serve it the same way as passkey-register.html; the passkey belongs to the
+  origin it was created on, so use the same one:
+
+      python3 -m http.server 8000 --directory scripts
+
+  Two conversions happen here, both easy to get wrong elsewhere:
+
+  1. WebAuthn returns an ASN.1 DER ECDSA signature; the contract wants the raw
+     64 bytes r || s.
+  2. Soroban's secp256r1_verify refuses a high-S signature ("ECDSA signature
+     's' part is not normalized to low form"), and authenticators produce
+     either form. s is replaced with n - s when it is above n/2, which leaves
+     the signature valid.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Barkeep — Sign with passkey</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf8; --fg: #1a1a19; --muted: #6b6a66;
+    --line: #e2e0dc; --card: #ffffff;
+    --accent: #7a4b2a; --ok: #2f6b3f; --bad: #9a2f2f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171614; --fg: #ece9e4; --muted: #9a968e;
+      --line: #32302c; --card: #1f1e1b;
+      --accent: #d9a273; --ok: #7fc08f; --bad: #e08585;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding-block: 2.5rem; padding-inline: 1rem;
+    background: var(--bg); color: var(--fg);
+    font: 15px/1.6 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  }
+  main { max-width: 44rem; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 2rem; }
+  section {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem;
+  }
+  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .07em;
+       color: var(--muted); margin: 0 0 .75rem; font-weight: 600; }
+  button {
+    font: inherit; font-weight: 550; cursor: pointer;
+    background: var(--accent); color: var(--bg);
+    border: 0; border-radius: 7px; padding: .6rem 1.1rem;
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+  .field { margin-top: 1rem; }
+  .field label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .3rem; }
+  .row { display: flex; gap: .5rem; align-items: flex-start; }
+  code, .hex, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  .hex, pre {
+    flex: 1; min-width: 0; word-break: break-all; white-space: pre-wrap; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 7px; padding: .6rem .7rem; margin: 0;
+  }
+  .note { color: var(--muted); font-size: .875rem; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1rem; margin: 0; }
+  dt { color: var(--muted); font-size: .875rem; } dd { margin: 0; word-break: break-all; }
+  [hidden] { display: none !important; }
+  .flags { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin-top: .5rem; }
+</style>
+
+<main>
+  <h1>Sign with passkey</h1>
+  <p class="sub">One assertion over one prepared transaction. Nothing secret leaves this page.</p>
+
+  <section id="missing" hidden>
+    <h2>Nothing to sign</h2>
+    <p class="note">
+      This page expects a prepared transaction in its URL fragment. Run
+      <code>npx tsx scripts/passkey-sign-testnet.mjs prepare</code> in
+      <code>packages/mcp-server</code> and open the URL it prints.
+    </p>
+    <p id="missingErr" class="bad note" hidden></p>
+  </section>
+
+  <section id="what" hidden>
+    <h2>1 · What you are signing</h2>
+    <dl>
+      <dt>Action</dt><dd id="action"></dd>
+      <dt>Account</dt><dd id="account"></dd>
+      <dt>Context rule</dt><dd id="rule"></dd>
+      <dt>Valid until ledger</dt><dd id="expires"></dd>
+      <dt>Challenge (auth digest)</dt><dd class="hex" id="challenge"></dd>
+      <dt>Credential id</dt><dd class="hex" id="credential"></dd>
+    </dl>
+    <p class="note" style="margin-top:1rem">
+      The challenge is <code>sha256(signature_payload || [rule id] as XDR)</code>,
+      the digest the account's <code>__check_auth</code> hands the WebAuthn
+      verifier. The verifier accepts the assertion only if the
+      <code>clientDataJSON</code> challenge is the base64url of exactly these 32
+      bytes, so this assertion cannot be reused for another transaction or
+      another rule.
+    </p>
+    <p style="margin-top:1rem"><button id="sign">Sign with passkey</button></p>
+    <p id="signErr" class="bad note" hidden></p>
+  </section>
+
+  <section id="out" hidden>
+    <h2>2 · Paste this back</h2>
+    <div class="flags" id="flags"></div>
+    <p id="verdict" class="note"></p>
+    <p id="local" class="note"></p>
+    <div class="field">
+      <label>Assertion (JSON)</label>
+      <div class="row">
+        <pre id="json"></pre>
+        <button class="secondary" data-copy="json">Copy</button>
+      </div>
+    </div>
+    <p class="note" style="margin-top:1rem">
+      Then, in <code>packages/mcp-server</code>:
+      <code>npx tsx scripts/passkey-sign-testnet.mjs submit --assertion '&lt;paste&gt;'</code>
+    </p>
+  </section>
+
+  <section>
+    <h2>Notes</h2>
+    <ul class="note">
+      <li>The signature is converted from DER to raw <code>r || s</code> and
+        normalised to low-S here, because Soroban's <code>secp256r1_verify</code>
+        rejects a high-S signature.</li>
+      <li>This passkey belongs to <code id="origin"></code>. The on-chain verifier
+        skips origin and rpIdHash checks (<code>docs/ARCHITECTURE-v2.md</code> §4),
+        which is why an assertion made here verifies on chain at all.</li>
+      <li>Testnet only.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const unhex = (s) => Uint8Array.from(s.match(/../g), (b) => parseInt(b, 16));
+
+  $("origin").textContent = location.origin;
+
+  /* ---- DER -> raw r||s, then low-S ---------------------------------------- */
+
+  const P256_N = BigInt("0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551");
+  const HALF_N = P256_N >> 1n;
+
+  function derToRawLowS(der) {
+    const b = new Uint8Array(der);
+    if (b[0] !== 0x30) throw new Error("signature is not a DER SEQUENCE");
+    let i = 2;
+    if (b[1] & 0x80) i = 2 + (b[1] & 0x7f); // long-form length (never for P-256, but harmless)
+    const readInt = () => {
+      if (b[i++] !== 0x02) throw new Error("expected DER INTEGER");
+      const len = b[i++];
+      let v = b.slice(i, i + len);
+      i += len;
+      while (v.length > 32 && v[0] === 0) v = v.slice(1);   // strip sign padding
+      if (v.length > 32) throw new Error("integer longer than 32 bytes");
+      const out = new Uint8Array(32);
+      out.set(v, 32 - v.length);
+      return out;
+    };
+    const r = readInt();
+    let s = readInt();
+    let sBig = BigInt("0x" + hex(s));
+    let normalised = false;
+    if (sBig > HALF_N) {
+      sBig = P256_N - sBig;
+      s = unhex(sBig.toString(16).padStart(64, "0"));
+      normalised = true;
+    }
+    const raw = new Uint8Array(64);
+    raw.set(r, 0);
+    raw.set(s, 32);
+    return { raw, normalised };
+  }
+
+  /* ---- the prepared transaction, from the fragment ----------------------- */
+
+  const params = new URLSearchParams(location.hash.slice(1));
+  const challengeHex = (params.get("challenge") || "").toLowerCase();
+  const credentialHex = (params.get("credential") || "").toLowerCase();
+  const keyHex = (params.get("key") || "").toLowerCase();
+
+  if (!/^[0-9a-f]{64}$/.test(challengeHex) || !/^([0-9a-f]{2})+$/.test(credentialHex)) {
+    $("missing").hidden = false;
+    if (location.hash.length > 1) {
+      $("missingErr").textContent = "The fragment is present but challenge (64 hex) or credential (hex) is malformed.";
+      $("missingErr").hidden = false;
+    }
+  } else {
+    $("what").hidden = false;
+    $("action").textContent = params.get("action") || "(not stated)";
+    $("account").textContent = params.get("account") || "(not stated)";
+    $("rule").textContent = params.get("rule") || "(not stated)";
+    $("expires").textContent = params.get("expires") || "(not stated)";
+    $("challenge").textContent = challengeHex;
+    $("credential").textContent = credentialHex;
+  }
+
+  /* ---- sign --------------------------------------------------------------- */
+
+  $("sign").onclick = async () => {
+    $("signErr").hidden = true;
+    $("sign").disabled = true;
+
+    try {
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge: unhex(challengeHex),
+          allowCredentials: [{ type: "public-key", id: unhex(credentialHex) }],
+          userVerification: "required",
+          timeout: 120000,
+        },
+      });
+
+      const authData = new Uint8Array(assertion.response.authenticatorData);
+      const clientData = new Uint8Array(assertion.response.clientDataJSON);
+      const { raw, normalised } = derToRawLowS(assertion.response.signature);
+
+      const flags = authData[32];
+      const bits = {
+        "User Present": flags & 0x01,
+        "User Verified": flags & 0x04,
+        "Backup Eligible": flags & 0x08,
+        "Backup State": flags & 0x10,
+      };
+      $("flags").innerHTML = Object.entries(bits)
+        .map(([name, set]) => `<span>${set ? "✓" : "✗"} ${name}</span>`)
+        .join("");
+
+      const required = (flags & 0x01) && (flags & 0x04);
+      const backupOk = !(flags & 0x10) || (flags & 0x08);
+      const verdict = $("verdict");
+      if (required && backupOk) {
+        verdict.className = "note ok";
+        verdict.textContent = `Flags are what the contract requires.${normalised ? " s was normalised to low-S." : " s was already low-S."}`;
+      } else {
+        verdict.className = "note bad";
+        verdict.textContent = required
+          ? "Backup State set without Backup Eligible; the contract rejects this (3118)."
+          : "User Present and User Verified must both be set; the contract rejects this (3116 / 3117).";
+      }
+
+      /*
+       * The clientDataJSON challenge must be the base64url (no padding) of the
+       * 32 challenge bytes. The browser wrote it, but check, since the contract
+       * compares the bytes exactly (3114 on mismatch).
+       */
+      const cdj = JSON.parse(new TextDecoder().decode(clientData));
+      const expected = btoa(String.fromCharCode(...unhex(challengeHex))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const challengeOk = cdj.type === "webauthn.get" && cdj.challenge === expected;
+
+      /*
+       * Local check with WebCrypto when the public key is in the fragment:
+       * the same message the contract hashes, authenticatorData || sha256(clientDataJSON).
+       * Independent of the contract, but the same construction, so a failure
+       * here is a failure there.
+       */
+      let local = challengeOk ? "clientDataJSON: type webauthn.get, challenge matches." : "clientDataJSON does NOT carry the expected challenge or type; the contract will refuse this (3113 / 3114).";
+      if (/^04[0-9a-f]{128}$/.test(keyHex)) {
+        const key = await crypto.subtle.importKey("raw", unhex(keyHex), { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+        const cdHash = new Uint8Array(await crypto.subtle.digest("SHA-256", clientData));
+        const msg = new Uint8Array(authData.length + 32);
+        msg.set(authData, 0);
+        msg.set(cdHash, authData.length);
+        const ok = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, raw, msg);
+        local += ok ? " Local WebCrypto check: the raw signature verifies against the registered key." : " Local WebCrypto check FAILED: the signature does not verify against the registered key.";
+      }
+      $("local").className = "note " + (challengeOk && !/FAILED|refuse/.test(local) ? "ok" : "bad");
+      $("local").textContent = local;
+
+      $("json").textContent = JSON.stringify({
+        challenge: challengeHex,
+        signature: hex(raw),
+        authenticator_data: hex(authData),
+        client_data: hex(clientData),
+      });
+      $("out").hidden = false;
+    } catch (err) {
+      $("signErr").textContent = String(err?.message ?? err);
+      $("signErr").hidden = false;
+    } finally {
+      $("sign").disabled = false;
+    }
+  };
+
+  for (const btn of document.querySelectorAll("[data-copy]")) {
+    btn.onclick = async () => {
+      await navigator.clipboard.writeText($(btn.dataset.copy).textContent);
+      const was = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(() => (btn.textContent = was), 1200);
+    };
+  }
+</script>

@@ -22,6 +22,10 @@
  *   PASSKEY_PUBLIC_KEY_HEX=04... PASSKEY_CREDENTIAL_ID_HEX=... PASSKEY_ORIGIN=http://localhost:8000 \
  *   npx tsx scripts/add-passkey-rule-testnet.mjs            # validate + simulate only
  *   npx tsx scripts/add-passkey-rule-testnet.mjs --submit   # and submit
+ *
+ * PASSKEY_RULE_NAME overrides the rule's name ("passkey"); the rehearsal in
+ * passkey-virtual-authenticator.mjs uses "passkey-rehearsal" so the two are
+ * never confused on chain.
  */
 import { ECDH } from "node:crypto";
 
@@ -32,7 +36,7 @@ import {
 import { Chain, explorerTx } from "../src/chain.ts";
 import { loadDeployment } from "../src/deployment.ts";
 
-const RULE_NAME = "passkey";
+const RULE_NAME = process.env.PASSKEY_RULE_NAME ?? "passkey";
 const MAX_EXTERNAL_KEY_SIZE = 256; // stellar-accounts 0.7.2 smart_account/mod.rs
 
 const deployment = loadDeployment();

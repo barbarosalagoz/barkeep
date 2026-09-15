@@ -198,7 +198,7 @@ barkeep/
 │   ├── SEP_RAMP.md
 │   └── screenshots/
 │
-├── scripts/                         # verifier checks, passkey registration page
+├── scripts/                         # verifier checks, passkey registration and signing pages
 ├── package.json                     # npm workspaces: packages/*
 └── README.md
 ```
