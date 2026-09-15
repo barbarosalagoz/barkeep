@@ -535,9 +535,12 @@ browser: `navigator.credentials.create()` has no Node equivalent, and neither
 the Stellar CLI nor any installed package offers one. Chrome DevTools Protocol
 can create a software authenticator (`WebAuthn.addVirtualAuthenticator`) that
 produces genuine WebAuthn-format assertions, which would make the passkey path
-a regression test instead of a manual step. Worth having; not on the v1 path,
-and never a substitute for testing against a real authenticator, since a
-virtual one is not hardware-backed.
+a regression test instead of a manual step. Built as a one-off rehearsal on
+2026-09-15 (`packages/mcp-server/scripts/passkey-virtual-authenticator.mjs`,
+`deployments/testnet.json` `doneTests.passkeyRehearsal`), not as a CI job: it
+needs a Playwright Chromium, which the repo does not depend on. Never a
+substitute for testing against a real authenticator, since a virtual one is
+not hardware-backed.
 
 An **"upto" scheme contract** in Rust/Soroban: authorize up to a cap, let the
 seller settle the actual usage once, refund the remainder. It fits metered APIs
