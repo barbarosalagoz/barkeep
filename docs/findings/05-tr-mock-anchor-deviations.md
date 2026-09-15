@@ -1,10 +1,8 @@
-> DRAFT for the author's review. Facts and structure taken from the repo record on 2026-09-15; the prose is to be rewritten in his own words.
-
 # Four places the TR Mock Anchor differs from its own documentation
 
 **Status:** observed while integrating, recorded 2026-09-11 (commit 964a204).
 Not reported to the anchor's maintainers. The repo dates these notes to 11
-September and does not record a later re-confirmation; a "confirmed on 13
+September and does not record a later re-confirmation. A "confirmed on 13
 September" claim would need a run that is not in the record.
 
 ## What I expected
@@ -12,8 +10,10 @@ September" claim would need a run that is not in the record.
 The TR Mock Anchor at `tr-mock-anchor.fly.dev` is the Rise In sandbox for a
 TRY to USDC ramp on Testnet. It publishes an `/llms-full.txt` describing its
 endpoints, and it speaks SEP-1, SEP-10, SEP-38 and SEP-6. I integrated it
-through the portable SEP path only, no partner API, and I expected the
-documented shapes, the `/sep6/info` shapes and the live responses to agree.
+through the portable SEP path only, no partner API. I took the anchor for a
+sandbox that would match its own documents, so I did not plan to check one
+source against another. I expected the documented shapes, the `/sep6/info`
+shapes and the live responses to agree.
 
 ## What I observed
 
@@ -30,16 +30,16 @@ They disagree in four places.
 4. SEP-6 calls accept an `account` parameter that differs from the JWT's
    subject.
 
-None of these broke the ramp once handled, and the first three are handled in
-code. The fourth is a note, not a code path.
+None of these broke the ramp once I had handled them. The first three are
+handled in code. The fourth is a note, not a code path.
 
 ## How I measured it
 
-The record is thinner than the other findings. The four points were written
-into the README's ramp section on 2026-09-11 and moved to `docs/SEP_RAMP.md`
-on 2026-09-14 unchanged. There are no transaction hashes for them: the live
-suite creates a throwaway Friendbot key on every run and records nothing to
-the repo.
+The record is thinner than for the other findings. I wrote the four points
+into the README's ramp section on 2026-09-11 and moved them to
+`docs/SEP_RAMP.md` on 2026-09-14 unchanged. There are no transaction hashes
+for them. The live suite creates a throwaway Friendbot key on every run and
+records nothing to the repo.
 
 What the code and tests evidence, per point:
 
@@ -50,19 +50,20 @@ What the code and tests evidence, per point:
    `memoType` "id" and a numeric `memo`, which is the spec shape.
 2. The live test "SEP-6 deposit: below-minimum amounts are rejected with the
    anchor's message" sends 1 TRY and expects `ANCHOR_REJECTED` with "minimum"
-   in the message. That shows the endpoint enforces a minimum above 1 and
-   that the app surfaces the anchor's own message instead of pre-checking. It
-   does not capture the 50 to 3,000 range, nor the 10 to 10,000 and 0.5 to
-   300 figures from the two documents. Those numbers rest on the note alone.
+   in the message. That shows the endpoint enforces a minimum above 1. It
+   also shows the app surfaces the anchor's own message instead of
+   pre-checking. It does not capture the 50 to 3,000 range, nor the 10 to
+   10,000 and 0.5 to 300 figures from the two documents. Those numbers rest
+   on the note alone.
 3. `sep6.ts` lists `pending_trust` among the statuses and labels it "Waiting
    for a trustline". `anchor/index.ts`, `watchDeposit`, polls until
    `pending_trust` or completion, adds the trustline and keeps polling, up to
-   three times. No test drives the anchor into `pending_trust`; the live
+   three times. No test drives the anchor into `pending_trust`. The live
    deposit creates the trustline before starting, so the status is never
    seen there.
 4. Nothing in the code or the tests exercises a SEP-6 call whose `account`
-   differs from the JWT subject. This one is an observation with no
-   artefact behind it.
+   differs from the JWT subject. This one is an observation with no artefact
+   behind it.
 
 To reproduce the live behaviour, from `packages/web`:
 
@@ -81,14 +82,14 @@ curl -s https://tr-mock-anchor.fly.dev/sep6/info
 ## What it means for other builders
 
 Parse the spec shape and fall back to the documented one, not the other way
-round; the spec is what the live server returned. Do not pre-check amount
-limits from a document; send the request and show the anchor's message. Handle
+round. The spec is what the live server returned. Do not pre-check amount
+limits from a document. Send the request and show the anchor's message. Handle
 `pending_trust` even if the anchor's docs do not mention it, because SEP-6
-defines it and this anchor emits it. Treat the `account`-versus-JWT point as
-something to test for yourself before relying on either behaviour.
+defines it and this anchor emits it. Test the `account`-versus-JWT point for
+yourself before relying on either behaviour.
 
 More generally: on a sandbox anchor, `/llms-full.txt` is a convenience written
-for language models, and it was the least accurate of the three sources I had.
+for language models. It was the least accurate of the three sources I had.
 
 ## Where it has been reported
 
