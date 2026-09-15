@@ -207,29 +207,6 @@ barkeep/
 
 ---
 
-## Future Vision
-
-With the Payment Tracker contract live on Testnet, Barkeep now has both
-halves of a machine-payment system: an on-chain settlement layer and a wallet
-frontend that drives it.
-
-Future versions may introduce:
-
-* Paid API endpoints
-* Stablecoin payments
-* Usage-based API billing
-* AI agent payments
-* Machine-to-machine payment flows
-* Developer SDKs
-* Payment analytics
-* Mainnet support
-
-The long-term idea is simple:
-
-> Make digital services directly purchasable by software.
-
----
-
 ## License
 
 The Barkeep source code in this repository is licensed under the
