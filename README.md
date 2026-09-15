@@ -3,24 +3,23 @@
 **Open a tab for your AI agent.**
 
 Barkeep is a Stellar dApp for machine payments. A human opens a tab with a
-spending cap and a time window, an agent spends against it to pay for HTTP
-requests, and every payment lands on an itemised bill.
+spending cap and a time window. An agent spends against it to pay for HTTP
+requests. Every payment lands on an itemised bill.
 
 Home: **[barkeep.dev](https://barkeep.dev)**
 
 > **What ships today.** The MCP server in `packages/mcp-server`, on Stellar
-> Testnet: it opens a tab, pays for HTTP requests against it, reports the bill
-> and closes it -- see [The tab (MCP server)](#the-tab-mcp-server-testnet),
+> Testnet. It opens a tab, pays for HTTP requests against it, reports the bill
+> and closes it. See [The tab (MCP server)](#the-tab-mcp-server-testnet),
 > including what it **cannot** pay yet. The cap and the payee list are
 > enforced on chain by policy contracts on an OpenZeppelin smart account. The
-> bill dashboard and plugin packaging are still a plan; the design is in
+> bill dashboard and plugin packaging are still a plan. The design is in
 > [docs/ARCHITECTURE-v2.md](docs/ARCHITECTURE-v2.md).
 >
 > The project was previously named **PromptRail**. Its Stellar Journey to
-> Mastery — Yellow Belt submission record -- the Payment Tracker escrow
-> contract, the multi-wallet dApp and the deployment the submission links to
-> -- is preserved under the old name in
-> [docs/YELLOW_BELT.md](docs/YELLOW_BELT.md).
+> Mastery (Yellow Belt) submission record is preserved under the old name in
+> [docs/YELLOW_BELT.md](docs/YELLOW_BELT.md): the Payment Tracker escrow
+> contract, the multi-wallet dApp and the deployment the submission links to.
 
 ---
 
@@ -28,19 +27,20 @@ Home: **[barkeep.dev](https://barkeep.dev)**
 
 `packages/mcp-server` is a local stdio MCP server for Claude Code. A tab is an
 on-chain context rule on a smart account built on OpenZeppelin's
-`stellar-accounts` library: the agent's session key as its only signer, a
-spending-limit policy, a payee-allowlist policy, and an expiry. The cap and
-the list of payees are enforced by those policies on chain, not by the server.
-None of these contracts is audited; the allowlist is Barkeep's own, since
-`stellar-accounts` ships none. See [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
+`stellar-accounts` library. The rule has the agent's session key as its only
+signer, a spending-limit policy, a payee-allowlist policy, and an expiry. The
+cap and the list of payees are enforced by those policies on chain, not by
+the server. None of these contracts is audited. The allowlist is Barkeep's
+own, since `stellar-accounts` ships none. See
+[docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
 
 **Payees fail closed.** `open_tab` takes `payees`, and a transfer to anyone
 else is refused on chain (`Error(Contract, #3901)`). A tab with no list must
-be opened with `allow_any_payee: true`, said explicitly; with neither,
+be opened with `allow_any_payee: true`, said explicitly. With neither,
 `open_tab` refuses. The flag is shown by `tab_status` and on every receipt.
-The agent's key cannot change the list; the human signer can
-(`add_payee` / `remove_payee` on the policy). Paying a payee not known when
-the tab was opened is not supported.
+The agent's key cannot change the list. The human signer can, with
+`add_payee` / `remove_payee` on the policy. Paying a payee not known when the
+tab was opened is not supported.
 
 | Tool | What it does |
 | --- | --- |
@@ -49,42 +49,43 @@ the tab was opened is not supported.
 | `tab_status` | Limit, spent, remaining and payees, read from the chain, plus receipts |
 | `close_tab` | Removes the rule, revoking the session key |
 
-### Who `pay_and_fetch` can pay -- read this first
+### Who `pay_and_fetch` can pay (read this first)
 
 **It pays sellers whose x402 facilitator accepts a smart-account payer. It
 does not pay arbitrary x402 endpoints today.**
 
 An x402 seller hands payment verification to a facilitator. The public one,
-`https://x402.org/facilitator`, refuses every payment from a Barkeep tab, for
-two reasons measured on Testnet (`deployments/testnet.json`,
+`https://x402.org/facilitator`, refuses every payment from a Barkeep tab. I
+measured two reasons on Testnet (`deployments/testnet.json`,
 `doneTests.x402Spike`):
 
 1. **Its event check.** Upstream `@x402/stellar` rejects any contract event
    that is not a `transfer`. The spending-limit policy emits
-   `spending_limit_enforced` on every capped spend, so the thing that makes a
+   `spending_limit_enforced` on every capped spend. So the thing that makes a
    tab a tab is what gets refused. The payee allowlist deliberately emits
-   nothing when it passes a payment, so it adds no second event to refuse;
-   Barkeep's facilitator would tolerate one, a third-party one would not.
-2. **Its fee ceiling.** 50,000 stroops by default; a smart-account transfer
+   nothing when it passes a payment, so it adds no second event to refuse.
+   Barkeep's facilitator would tolerate one. A third-party one would not.
+2. **Its fee ceiling.** 50,000 stroops by default. A smart-account transfer
    simulated at 324,039.
 
 A seller like that answers the paid request with a refusal and nothing is
 paid. `packages/mcp-server/src/facilitator.ts` is the same upstream
-facilitator with exactly those two checks relaxed, each commented with the
-upstream check it relaxes; a seller that points at it can be paid. Until
-upstream accepts smart-account payers, that is the reach of this tool.
+facilitator with exactly those two checks relaxed. Each relaxation is
+commented with the upstream check it relaxes. A seller that points at it can
+be paid. Until upstream accepts smart-account payers, that is the reach of
+this tool.
 
-Per call, `max_amount` caps the price and identical calls (same tab, URL,
+Per call, `max_amount` caps the price. Identical calls (same tab, URL,
 `max_amount` and optional `request_id`) pay once. Both are enforced by the
-server; the tab's cap is enforced on chain. The money tools carry the
+server. The tab's cap is enforced on chain. The money tools carry the
 `anthropic/requiresUserInteraction` flag, so the host asks on every call.
-Every payment appends a receipt -- tx hash, amount, endpoint, timestamp, tab
-id, `allow_any_payee` -- to the state directory's `receipts.jsonl`.
+Every payment appends a receipt to the state directory's `receipts.jsonl`: tx
+hash, amount, endpoint, timestamp, tab id, `allow_any_payee`.
 
 ### Run the demo stack
 
-Three processes, keys read from the Stellar CLI key store, never from a file
-in the repo or from Claude Code's configuration.
+Three processes. Keys are read from the Stellar CLI key store, never from a
+file in the repo or from Claude Code's configuration.
 
 ```sh
 # 1. the facilitator: pays settlement fees with its OWN key. It refuses to
@@ -106,7 +107,7 @@ claude mcp add barkeep --scope local -- "$PWD/packages/mcp-server/bin/barkeep-mc
 Then, in Claude Code: open a tab (`PT1H` or longer, so it outlives the take)
 with the seller as its payee, `GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7`,
 and ask for `http://127.0.0.1:4021/haiku`. Repeating an identical call returns
-the first result without paying again; pass a new `request_id` to pay again.
+the first result without paying again. Pass a new `request_id` to pay again.
 
 Checks, from `packages/mcp-server`:
 
@@ -130,6 +131,30 @@ npx tsx scripts/payee-allowlist-testnet.mjs
 Results, with transaction hashes, are recorded under `doneTests.payAndFetch`,
 `doneTests.demoStack` and `doneTests.payeeAllowlist` in
 `deployments/testnet.json`.
+
+## How it works
+
+A tab is a context rule on a smart account. The agent's key is its only
+signer. A spending limit and a payee allowlist are its policies. An expiry
+ledger ends it. The agent signs a `transfer` on the token under that rule. A
+facilitator that accepts smart-account payers submits it. A receipt lands on
+the bill. [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) walks one payment
+through and names the file for each step. It also describes the three traps
+that cost me a debugging round each: recording-mode simulation, `transfer`
+versus `execute`, and the delegated signer's missing entry.
+
+## What I found building this
+
+Six things I did not expect, each with the hashes or commands behind it and
+where it has or has not been reported. Index in
+[docs/README.md](docs/README.md).
+
+1. [The public x402 facilitator refuses accounts that enforce a cap on chain](docs/findings/01-x402-public-facilitator-refuses-policy-events.md)
+2. [A `stellar-accounts` 0.7.2 signature verifies on another account that lists the same key](docs/findings/02-auth-digest-not-account-scoped.md)
+3. ["Audited" covered none of what I deploy](docs/findings/03-what-audited-covers.md)
+4. [The ed25519 verifier never returns false, so every signing mistake looks the same](docs/findings/04-ed25519-verifier-panics-not-false.md)
+5. [Four places the TR Mock Anchor differs from its own documentation](docs/findings/05-tr-mock-anchor-deviations.md)
+6. [The WebAuthn verifier passed its done-test and could never be called by the account](docs/findings/06-webauthn-verifier-sig-data-not-xdr.md)
 
 ---
 ---
@@ -165,6 +190,9 @@ barkeep/
 │   └── testnet-v09.json
 │
 ├── docs/
+│   ├── README.md                    # index of the docs below
+│   ├── HOW_IT_WORKS.md              # one payment walked through, file by file
+│   ├── findings/                    # six things found while building, with their evidence
 │   ├── ARCHITECTURE-v2.md           # the design; §4.1 is the audit position
 │   ├── DEPLOYMENTS.md               # keys, identities, how to redeploy
 │   ├── YELLOW_BELT.md               # the PromptRail submission record, preserved
@@ -176,29 +204,6 @@ barkeep/
 ├── package.json                     # npm workspaces: packages/*
 └── README.md
 ```
-
----
-
-## Future Vision
-
-With the Payment Tracker contract live on Testnet, Barkeep now has both
-halves of a machine-payment system: an on-chain settlement layer and a wallet
-frontend that drives it.
-
-Future versions may introduce:
-
-* Paid API endpoints
-* Stablecoin payments
-* Usage-based API billing
-* AI agent payments
-* Machine-to-machine payment flows
-* Developer SDKs
-* Payment analytics
-* Mainnet support
-
-The long-term idea is simple:
-
-> Make digital services directly purchasable by software.
 
 ---
 
