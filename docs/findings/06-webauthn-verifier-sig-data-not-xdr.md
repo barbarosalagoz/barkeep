@@ -85,6 +85,11 @@ contract. The assertion's flags byte was `0x05` (User Present, User Verified)
 and its `clientDataJSON` origin `http://localhost:8001`. Rule 30 was removed
 afterwards (tx in `deployments/testnet.json`, `doneTests.passkeyRehearsal`).
 
+The human's own passkey then did the same on rule 31, with Touch ID in a
+browser: `f6a66a603e160bb63e539b458acec6b6245f930d54ac8dc2918108397999ce17`,
+ledger 4690054, flags `0x1d`, origin `http://localhost:8000`, the assertion
+read back from the envelope on Horizon (`doneTests.passkeySign`).
+
 ## What it means for other builders
 
 A verifier done-test has to send the bytes the account sends. Calling

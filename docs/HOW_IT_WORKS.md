@@ -40,10 +40,15 @@ in this repository ([finding 03](findings/03-what-audited-covers.md)).
 The account needs two more contracts to function, both thin wrappers that give
 a library function an address: `contracts/barkeep-verifier-ed25519` for the
 agent's key and `contracts/barkeep-verifier-webauthn` for a passkey. The
-account calls them by address to check a signature. Today the human signer is
-an ed25519 key standing in for a passkey; registering a real one is an
-`add_signer` call, not a redeploy (`docs/DEPLOYMENTS.md`, "Registering the
-human signer's passkey").
+account calls them by address to check a signature. The human's passkey is
+registered as rule 31, a `Default` rule of its own, and verified on chain by
+a transfer it alone authorised (`deployments/testnet.json`,
+`doneTests.passkeySign`). It is bound to `http://localhost:8000`, the origin
+it was created on; it works on chain because the verifier skips origin and
+rpIdHash checks (`docs/DEPLOYMENTS.md`, "Registering the human signer's
+passkey"). The ed25519 key stays on rule 0 as a second human path. The first
+WebAuthn verifier deployment could never be called by the account
+([finding 06](findings/06-webauthn-verifier-sig-data-not-xdr.md)).
 
 ## Why a context rule
 
@@ -92,8 +97,9 @@ same key with the same transfer gets `#3000`, `ContextRuleNotFound`.
 The human signer's key is a different key on a different rule. The MCP server
 process holds both today, which is a stated limit: the contract stops the
 agent's key, not a process holding both keys (`docs/DEPLOYMENTS.md`, "The
-payee allowlist"). The passkey is what separates them, and it is not
-registered yet.
+payee allowlist"). The passkey is what separates them. It is registered as
+rule 31 and has signed on chain; the server still reads the ed25519 admin
+key, so the separation is available and not yet used.
 
 No key is ever written by Barkeep. `packages/mcp-server/bin/barkeep-mcp` is
 the wrapper Claude Code launches; it reads the admin, agent and submitter
@@ -279,7 +285,8 @@ with the wrong argument it traps identically (D3); with it, it succeeds (D1).
 ## What is not here
 
 The bill dashboard and plugin packaging are unbuilt. The passkey signer is
-not registered; an ed25519 key stands in. The account is on `stellar-accounts`
+registered (rule 31) and has signed on chain, but `bin/barkeep-mcp` does not
+use it yet, and the passkey is bound to `localhost:8000`. The account is on `stellar-accounts`
 0.7.2 with the digest gap above; the migration is written down but not
 started. The facilitator is Barkeep's, so the set of payable sellers is the
 set that point at it. Mainnet is closed until a policy review. The escrow

@@ -8,7 +8,7 @@ One line per document. Start with the walkthrough if you have no context.
 
 - [HOW_IT_WORKS.md](HOW_IT_WORKS.md): one payment from opening a tab to the line on the bill, each step naming its file, and the three traps.
 - [ARCHITECTURE-v2.md](ARCHITECTURE-v2.md): the design, constraints, dependency and licence table, risks; §4.1 is the audit position and the only place to quote it from.
-- [DEPLOYMENTS.md](DEPLOYMENTS.md): the Testnet identities, where keys live and never live, how to redeploy, the passkey registration step.
+- [DEPLOYMENTS.md](DEPLOYMENTS.md): the Testnet identities, where keys live and never live, how to redeploy, the passkey registration and signing steps.
 - [MIGRATION-stellar-accounts-0.9.0.md](MIGRATION-stellar-accounts-0.9.0.md): what breaks when the account moves off 0.7.2, and why it has not moved yet.
 
 ## Findings
@@ -20,12 +20,13 @@ Each has the same shape: what I expected, what I observed, how I measured it, wh
 - [03 "Audited" covered none of what I deploy](findings/03-what-audited-covers.md): confirmed; my own docs corrected.
 - [04 The ed25519 verifier never returns false](findings/04-ed25519-verifier-panics-not-false.md): confirmed for wrong digest and replay, inferred for wrong key; in the unposted draft.
 - [05 Four places the TR Mock Anchor differs from its documentation](findings/05-tr-mock-anchor-deviations.md): recorded 11 Sep, two of four evidenced in code, not reported.
+- [06 The WebAuthn verifier passed its done-test and could never be called by the account](findings/06-webauthn-verifier-sig-data-not-xdr.md): confirmed by simulation, fixed by a redeploy, verified by a passkey transfer on chain; Barkeep's bug, nothing to report.
 
 ## Evidence
 
 - [../deployments/testnet.json](../deployments/testnet.json): contract ids, wasm hashes, and every done-test's transaction hashes, ledgers and refusal codes on the 0.7.2 deployment.
 - [../deployments/testnet-v09.json](../deployments/testnet-v09.json): the same on the `4529d70` deployment, plus the client-flow and cross-account replay cases.
-- [../packages/mcp-server/scripts/](../packages/mcp-server/scripts/): the Testnet done-test scripts those hashes came from; `tab-lifecycle`, `tab-tools`, `x402-spike`, `pay-and-fetch`, `payee-allowlist`, `demo-stack`, `extend-ttl`, and the two `v09-*` scripts.
+- [../packages/mcp-server/scripts/](../packages/mcp-server/scripts/): the Testnet done-test scripts those hashes came from; `tab-lifecycle`, `tab-tools`, `x402-spike`, `pay-and-fetch`, `payee-allowlist`, `demo-stack`, `extend-ttl`, `add-passkey-rule`, `passkey-sign`, `passkey-virtual-authenticator`, `remove-context-rule`, and the two `v09-*` scripts.
 - [../scripts/verify-verifiers-testnet.sh](../scripts/verify-verifiers-testnet.sh): read-only check that the deployed verifiers accept a known-good fixture and refuse a bad one.
 
 ## Upstream

@@ -153,6 +153,7 @@ commands behind it and where it has or has not been reported. Index in
 3. ["Audited" covered none of what I deploy](docs/findings/03-what-audited-covers.md)
 4. [The ed25519 verifier never returns false, so every signing mistake looks the same](docs/findings/04-ed25519-verifier-panics-not-false.md)
 5. [Four places the TR Mock Anchor differs from its own documentation](docs/findings/05-tr-mock-anchor-deviations.md)
+6. [The WebAuthn verifier passed its done-test and could never be called by the account](docs/findings/06-webauthn-verifier-sig-data-not-xdr.md)
 
 ---
 ---
@@ -190,7 +191,7 @@ barkeep/
 ├── docs/
 │   ├── README.md                    # index of the docs below
 │   ├── HOW_IT_WORKS.md              # one payment walked through, file by file
-│   ├── findings/                    # five things found while building, with their evidence
+│   ├── findings/                    # six things found while building, with their evidence
 │   ├── ARCHITECTURE-v2.md           # the design; §4.1 is the audit position
 │   ├── DEPLOYMENTS.md               # keys, identities, how to redeploy
 │   ├── YELLOW_BELT.md               # the PromptRail submission record, preserved
