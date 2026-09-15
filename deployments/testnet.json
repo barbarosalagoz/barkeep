@@ -81,7 +81,9 @@
         "keyDataBytes": 85,
         "addedTx": "47448d91d201bdfda595206cf885f79923b941f28169d49efccb52c8828657bd",
         "addedBy": "rule 0 (the ed25519 human signer), via packages/mcp-server/scripts/add-passkey-rule-testnet.mjs",
-        "note": "The passkey was created on http://localhost:8000 (scripts/passkey-register.html) and is bound to that origin by the browser. It verifies on chain anyway because the WebAuthn verifier deliberately skips origin and rpIdHash checks (docs/ARCHITECTURE-v2.md section 4). Register again per origin once that gap closes. Not add_signer on rule 0: a rule without policies requires all its signers, which would make every admin call 2-of-2."
+        "note": "The passkey was created on http://localhost:8000 (scripts/passkey-register.html) and is bound to that origin by the browser. It verifies on chain anyway because the WebAuthn verifier deliberately skips origin and rpIdHash checks (docs/ARCHITECTURE-v2.md section 4). Register again per origin once that gap closes. Not add_signer on rule 0: a rule without policies requires all its signers, which would make every admin call 2-of-2.",
+        "verifiedTx": "f6a66a603e160bb63e539b458acec6b6245f930d54ac8dc2918108397999ce17",
+        "verifiedNote": "First transfer authorised by this passkey alone, ledger 4690054; doneTests.passkeySign."
       }
     },
     "token": {
@@ -502,7 +504,7 @@
     },
     "passkeyRehearsal": {
       "question": "Can an assertion from a real WebAuthn ceremony, wrapped the way passkey-sign-testnet.mjs wraps it, pass __check_auth on a Default rule holding only a passkey?",
-      "answer": "Yes, against the redeployed verifier. A throwaway passkey from a Chromium virtual authenticator (CDP WebAuthn.addVirtualAuthenticator, ctap2, internal, user verification on) went through scripts/passkey-register.html, was added as rule 30, signed one transfer on scripts/passkey-sign.html, and the transfer settled. Rule 30 was removed afterwards. The human's own passkey (rule 31) has not signed yet; see passkeySign.",
+      "answer": "Yes, against the redeployed verifier. A throwaway passkey from a Chromium virtual authenticator (CDP WebAuthn.addVirtualAuthenticator, ctap2, internal, user verification on) went through scripts/passkey-register.html, was added as rule 30, signed one transfer on scripts/passkey-sign.html, and the transfer settled. Rule 30 was removed afterwards. The human's own passkey (rule 31) signed next; see passkeySign.",
       "addRule": {
         "tx": "e3767763e4daa61839bd6a5879139997d802bebfab4b6fde1d2c200afb40d486",
         "contextRuleId": 30,
@@ -529,10 +531,41 @@
       }
     },
     "passkeySign": {
-      "status": "not yet run",
       "script": "packages/mcp-server/scripts/passkey-sign-testnet.mjs",
       "page": "scripts/passkey-sign.html",
-      "note": "Needs the human's authenticator. prepare builds a 1000 base-unit TAB transfer under rule 31 and prints the page URL; the page produces the assertion; submit wraps and sends it. Fill this in from submit's output."
+      "question": "Can the human's own passkey (rule 31), signing in a browser with Touch ID, authorise a transfer from the smart account?",
+      "answer": "Yes. prepare built the transfer and the digest, the page produced the assertion, submit wrapped it and sent it; the ledger accepted it with the passkey as the only signer.",
+      "tx": "f6a66a603e160bb63e539b458acec6b6245f930d54ac8dc2918108397999ce17",
+      "ledger": 4690054,
+      "successful": true,
+      "error": null,
+      "contextRuleId": 31,
+      "action": "transfer 1000 base units of TAB from the smart account to GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7",
+      "authDigest": "a72eae12da20d8d7dc3a060a9c02c2fb5f1ee134d25823aebab0731a524811ba",
+      "authEntry": {
+        "address": "CCAO6UVMZ2JGUAGIQKMVHXKWKD7TZKW2YP77M2NK56MWL6LC66ZZ3FLH",
+        "signatureExpirationLedger": 4724482,
+        "contextRuleIds": [
+          31
+        ]
+      },
+      "assertion": {
+        "signature": "7ac8843b4b9d43a9bbdaf0806f227fc78c8c425fa933c5a7a5f3ac2271f557130793110e51b008ccc671df2914e8e251b0801bc0c3c7e51b70cc057d3513ad5e",
+        "authenticatorData": "49960de5880e8c687434170f6476605b8fe4aeb9a28632c7995cf3ba831d97631d00000000",
+        "flags": "0x1d (User Present, User Verified, Backup Eligible, Backup State)",
+        "clientDataJSON": "{\"type\":\"webauthn.get\",\"challenge\":\"py6uEtog2NfcOgYKnALC-18e4TTSWCOuurBzGlJIEbo\",\"origin\":\"http://localhost:8000\",\"crossOrigin\":false}",
+        "note": "Read back from the transaction envelope on Horizon, not from local state: the AuthPayload's signer value decodes as WebAuthnSigData (344 bytes of XDR), the challenge is base64url of the digest recomputed from the entry's nonce, expiry and invocation, and s is low-S."
+      },
+      "horizon": {
+        "successful": true,
+        "ledger": 4690054,
+        "feeCharged": 222733,
+        "sourceAccount": "GAM225BSUJZCO3GHNOSW3APCUI5XNX2ECN27A7CAMSLL3EHGEYMWLGHT",
+        "createdAt": "2026-09-15T12:04:17Z"
+      },
+      "events": [
+        "transfer CCAO6UVM... -> GASFR7KG... 1000 (TAB), emitted by CBXLQ3TC..."
+      ]
     }
   },
   "ttlExtension": {
