@@ -1,32 +1,31 @@
-# DRAFT — not posted. Run 2026-09-12; results filled in.
+# Posted 2026-09-18 as OpenZeppelin/stellar-contracts#897. Run 2026-09-12.
 
-Intended for `OpenZeppelin/stellar-contracts`, as an issue. Nothing here has
-been sent upstream.
+https://github.com/OpenZeppelin/stellar-contracts/issues/897
 
-Every case below was run against Testnet and every value is observed, not
-expected. The raw record is `deployments/testnet-v09.json` (`doneTests`,
-`clientFlow`); the scripts are
+Everything below the `---` line is the issue body as posted.
+
+Title: Testnet confirmation of the v0.9.0 smart-account client flow (External and Delegated signers)
+
+Record: `deployments/testnet-v09.json` (`doneTests`, `clientFlow`); scripts
 `packages/mcp-server/scripts/v09-client-flow-testnet.mjs` and
-`v09-tab-lifecycle-testnet.mjs`. No case was skipped, so no row is `TBD`.
+`v09-tab-lifecycle-testnet.mjs`.
 
-Before posting:
+Checked by Claude on 2026-09-18:
 
-1. Re-check the `v0.9.0` branch head (it was `c008f2d` when this ran). If 0.9.0
-   has published, say whether it contains `4529d70` and whether you re-ran
-   against the published crate.
-2. Review the scripts, the transactions and this text personally, including
-   opening the transaction links. The body below says that review happened; it
-   must be true when posted.
-3. Decide whether to keep the Barkeep-specific done-test paragraph. It is
-   evidence that the flow works under a real policy, but it is our product, not
-   their library.
-4. Delete this header.
+- `v0.9.0` head is still `c008f2d` (compare `c008f2d...v0.9.0`: identical). The
+  8 commits from `4529d70` to `c008f2d` change 66 files, none under
+  `packages/accounts`. crates.io latest `stellar-accounts` is 0.7.2; no 0.9.0
+  tag or release.
+- All 10 transaction links and 3 contract links return 200 from
+  `api.stellar.expert`; Horizon's `successful` flag and ledger match every row.
+- Removed the paragraph on Barkeep's own `spending_limit` lifecycle proofs
+  (three links). The record for it stays in `deployments/testnet-v09.json`.
+- Their CONTRIBUTING.md "Use of AI Tools" section is unchanged since c5c86c4
+  (2026-04-29). The disclosure below matches it: AI output as a first draft,
+  reviewed by the submitter.
+- #868, #876, #839 and #863 are all closed.
 
 ---
-
-**Title:** Testnet confirmation of the v0.9.0 smart-account client flow (External and Delegated signers)
-
-**Body:**
 
 > **AI-assisted.** The scripts behind this report and the first draft of this
 > text were written with an AI coding assistant (Claude). I have reviewed the
@@ -54,7 +53,9 @@ the end. Nothing here proposes a code change.
 - `stellar-accounts` from branch `v0.9.0` at
   `4529d708c47866bec790223b88036f9aa9e404b3` (the #868 merge), pinned as a git
   dependency. Unpublished at the time; the crate's version field still reads
-  `0.7.1`.
+  `0.7.1`. On 2026-09-18 the branch head is `c008f2d`, 8 commits later, none of
+  which touch `packages/accounts`, and crates.io still lists 0.7.2 as the
+  latest. I have not re-run against `c008f2d`.
 - `soroban-sdk` **27.0.6**, not the 27.0.2 in your lockfile at that commit: our
   workspace already resolves 27.0.6 and Cargo keeps one version per compatible
   range. Built with `stellar contract build` (stellar-cli 28.0.0).
@@ -130,12 +131,6 @@ client computed the same `signature_payload` for both.
 
 R1 also confirms the premise: nonces are tracked per authorizing address, so
 the nonce A had just consumed was unused for B.
-
-Separately, on our own product account built on 4529d70 with a real
-`spending_limit` policy, the three lifecycle proofs held unchanged: under cap
-[succeeds](https://stellar.expert/explorer/testnet/tx/f785643d32ca6439b346b508cfc1442b0a7be84f10936cac9056092cce6e266c),
-over cap [fails `#3221`](https://stellar.expert/explorer/testnet/tx/2095fbb1355e37d38995d38f443b65b222e7225c54846f1c12053e5b921f691c),
-after `valid_until` [fails `#3002`](https://stellar.expert/explorer/testnet/tx/4dc98c2f130d4b8b8b6d748199ae544caedd7e0a2372ca809bf06b1dd012aff0).
 
 ### Result
 
