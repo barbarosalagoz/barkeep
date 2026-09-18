@@ -1,6 +1,12 @@
 # The public x402 facilitator refuses the accounts that enforce a cap on chain
 
-**Status:** confirmed on Testnet, 2026-09-13. Not reported upstream.
+**Status:** confirmed on Testnet, 2026-09-13. The event check was reported
+upstream before I hit it, by someone else, as x402#3352 (2026-09-03). I added
+my measurements there as a
+[comment](https://github.com/x402-foundation/x402/issues/3352#issuecomment-5727321326)
+and filed the fee ceiling separately as
+[x402#3515](https://github.com/x402-foundation/x402/issues/3515), both on
+2026-09-18.
 
 ## What I expected
 
@@ -108,15 +114,30 @@ paid no fee.
 
 ## Where it has been reported
 
-Nowhere yet. There is no draft in the repo for this one.
+I wrote "Nowhere yet" here on 2026-09-13. That was true of me and wrong about
+the problem. When I went to file it on 2026-09-18 the event check was already
+in the x402 foundation's monorepo: x402#3352, opened by someone else on
+2026-09-03, ten days before my run, with the same `spending_limit_enforced`
+case. x402#3399 (2026-09-08) proposes the fix, scoping the check to the asset
+contract, which is the narrowing `facilitator.ts` runs.
 
-It belongs in the x402 foundation's monorepo against `@x402/stellar`, as two
-points. The event check should be scoped to the asset contract rather than to
-every contract in the simulation. And the public deployment's 50,000-stroop
-default is below what a `__check_auth` that calls a verifier contract cost
-here. T1, the stock client's inability to sign for a C-address, is a third
-point and may belong with the SDK's `AssembledTransaction.signAuthEntries`
-instead.
+So I did not open a second issue for it. My measurements are on #3352 as a
+[comment](https://github.com/x402-foundation/x402/issues/3352#issuecomment-5727321326),
+posted 2026-09-18: T3 and T4, the same payload refused by the stock check and
+settling with the check scoped to the asset, in support of #3399's approach.
+The text as posted is `docs/upstream/x402-3352-comment.md`.
+
+The fee ceiling is not in #3352 and is checked first, so it would keep
+refusing this payer after #3399 merges. I filed it separately the same day as
+[x402#3515](https://github.com/x402-foundation/x402/issues/3515): the
+50,000-stroop default against the 324,039 measured here, the fact that
+`maxTransactionFeeStroops` is a constructor option a hosted facilitator's
+callers cannot reach, and a proposal to raise the default or publish the
+ceiling in `/supported`. The text as posted is
+`docs/upstream/x402-fee-ceiling-default.md`.
+
+T1, the stock client's inability to sign for a C-address, was also already
+reported, as x402#3158 (2026-08-14).
 
 ## Record
 
@@ -125,4 +146,5 @@ instead.
 - Commit `27ab3d6` (in PR #3): the run written up at the time.
 - `packages/mcp-server/src/facilitator.ts`: the two relaxations, with the upstream checks named.
 - `docs/ARCHITECTURE-v2.md` §3.1: the original expectation and the dated correction.
+- `docs/upstream/x402-3352-comment.md` and `docs/upstream/x402-fee-ceiling-default.md`: the comment and the issue, as posted.
 - PR #6 body and `contracts/barkeep-payee-allowlist/src/lib.rs`, "Events": why the allowlist emits nothing.

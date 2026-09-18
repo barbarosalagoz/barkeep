@@ -3,9 +3,8 @@
 **Status:** confirmed on Testnet, 2026-09-12, against two throwaway accounts per
 library version. Upstream already knew: OpenZeppelin/stellar-contracts#876,
 fixed by #868 on the unpublished `v0.9.0` branch. My contribution is the
-Testnet confirmation, written up in
-`docs/upstream/stellar-contracts-v0.9.0-client-flow-testnet.md`. That is a
-filled-in draft and has not been posted.
+Testnet confirmation, posted on 2026-09-18 as
+[OpenZeppelin/stellar-contracts#897](https://github.com/OpenZeppelin/stellar-contracts/issues/897).
 
 ## What I expected
 
@@ -117,15 +116,16 @@ contract's `auth_digest` view on chain (case E1 in the same record).
 
 Upstream issue #876 predates this work. The repo does not record who filed it.
 My Testnet confirmation of the `v0.9.0` client flow, including R1 and R2, is
-the draft at `docs/upstream/stellar-contracts-v0.9.0-client-flow-testnet.md`.
-Every value in it is filled in from the run. It is not posted. Its header
-lists what to do before posting: re-check the branch head, open every
-transaction link personally, decide whether to keep the Barkeep-specific
-paragraph, and delete the header.
+[OpenZeppelin/stellar-contracts#897](https://github.com/OpenZeppelin/stellar-contracts/issues/897), posted on 2026-09-18. Every value
+in it is filled in from the run. The text as posted is
+`docs/upstream/stellar-contracts-v0.9.0-client-flow-testnet.md`. Before posting
+I re-checked the `v0.9.0` branch head, which had not moved past `c008f2d`, and
+took out the paragraph about Barkeep's own `spending_limit` lifecycle proofs,
+which is about this product and not their library.
 
 ## Record
 
-- `docs/upstream/stellar-contracts-v0.9.0-client-flow-testnet.md`: the filled-in draft, with every case.
+- `docs/upstream/stellar-contracts-v0.9.0-client-flow-testnet.md`: the report as posted in #897, with every case.
 - `deployments/testnet-v09.json`, `clientFlow.R1`, `clientFlow.R2`, `replay072`: hashes, ledgers, account ids.
 - `docs/MIGRATION-stellar-accounts-0.9.0.md`: the formula, where the fix lives, what breaks.
 - `docs/ARCHITECTURE-v2.md` §10, risk 13.

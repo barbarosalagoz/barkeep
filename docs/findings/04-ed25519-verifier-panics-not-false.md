@@ -1,7 +1,8 @@
 # The ed25519 verifier never returns false, so every signing mistake looks the same
 
-**Status:** confirmed in a local `Env` and on Testnet, 2026-09-12. Written up as
-an observation in the unposted upstream draft. Not reported on its own.
+**Status:** confirmed in a local `Env` and on Testnet, 2026-09-12. Reported on
+2026-09-18 as observation 1 in
+[OpenZeppelin/stellar-contracts#897](https://github.com/OpenZeppelin/stellar-contracts/issues/897). Not reported on its own.
 
 ## What I expected
 
@@ -102,11 +103,12 @@ signature some other way first. I did not try either.
 
 ## Where it has been reported
 
-Observation 1 in `docs/upstream/stellar-contracts-v0.9.0-client-flow-testnet.md`,
-the unposted draft for OpenZeppelin/stellar-contracts. It is framed there as a
+Observation 1 in [OpenZeppelin/stellar-contracts#897](https://github.com/OpenZeppelin/stellar-contracts/issues/897), posted on
+2026-09-18. The text as posted is
+`docs/upstream/stellar-contracts-v0.9.0-client-flow-testnet.md`. It is framed there as a
 documentation gap in the "Authorizing from a Client" section, which describes
 the delegated failure mode but not this one. It is explicitly not framed as a
-bug. It has not been sent, and it has no issue of its own. The host function's
+bug. It has no issue of its own. The host function's
 behaviour is documented by Soroban, so there is nothing to report on that side.
 
 ## Record
