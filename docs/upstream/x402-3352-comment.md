@@ -1,14 +1,14 @@
-# DRAFT by Claude for the author's review, not posted. Written 2026-09-18 from docs/findings/01.
+# Posted 2026-09-18 as a comment on x402-foundation/x402#3352. Drafted by Claude from docs/findings/01.
 
-Intended for `x402-foundation/x402`, as a comment on issue #3352. Nothing here
-has been sent upstream. Everything below the `---` line is the comment; the
-`gh issue comment` command strips this header.
+https://github.com/x402-foundation/x402/issues/3352#issuecomment-5727321326
+
+Everything below the `---` line is the comment as posted.
 
 Record: `deployments/testnet.json` (`doneTests.x402Spike`); script
 `packages/mcp-server/scripts/x402-spike-testnet.mjs` (commit 27ab3d6); the
 filter in `packages/mcp-server/src/facilitator.ts`, `onlyAssetEvents`.
 
-Read before posting:
+Checked before posting:
 
 - Checked 2026-09-18: the T4 link returns 200 from `api.stellar.expert`;
   Horizon says successful, ledger 4649844, fee charged 276,476.
@@ -17,7 +17,6 @@ Read before posting:
 - The two-topic reading of `spending_limit_enforced` comes from the
   stellar-accounts 0.7.2 source, not from the recorded event. The comment says
   so.
-- The disclosure says you reviewed this. That has to be true when it is posted.
 
 ---
 

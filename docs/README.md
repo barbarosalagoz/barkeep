@@ -15,10 +15,10 @@ One line per document. Start with the walkthrough if you have no context.
 
 Each has the same shape: what I expected, what I observed, how I measured it, what it means for other builders, where it has been reported.
 
-- [01 The public x402 facilitator refuses accounts that enforce a cap on chain](findings/01-x402-public-facilitator-refuses-policy-events.md): confirmed, not reported.
-- [02 A 0.7.2 signature verifies on another account with the same key](findings/02-auth-digest-not-account-scoped.md): confirmed; upstream draft filled in, not posted.
+- [01 The public x402 facilitator refuses accounts that enforce a cap on chain](findings/01-x402-public-facilitator-refuses-policy-events.md): confirmed; already upstream as x402#3352, my measurements added there as a comment, fee ceiling filed as x402#3515.
+- [02 A 0.7.2 signature verifies on another account with the same key](findings/02-auth-digest-not-account-scoped.md): confirmed; posted as OpenZeppelin/stellar-contracts#897.
 - [03 "Audited" covered none of what I deploy](findings/03-what-audited-covers.md): confirmed; my own docs corrected.
-- [04 The ed25519 verifier never returns false](findings/04-ed25519-verifier-panics-not-false.md): confirmed for wrong digest and replay, inferred for wrong key; in the unposted draft.
+- [04 The ed25519 verifier never returns false](findings/04-ed25519-verifier-panics-not-false.md): confirmed for wrong digest and replay, inferred for wrong key; observation 1 in OpenZeppelin/stellar-contracts#897.
 - [05 Four places the TR Mock Anchor differs from its documentation](findings/05-tr-mock-anchor-deviations.md): recorded 11 Sep, two of four evidenced in code, not reported.
 - [06 The WebAuthn verifier passed its done-test and could never be called by the account](findings/06-webauthn-verifier-sig-data-not-xdr.md): confirmed by simulation, fixed by a redeploy, verified by a passkey transfer on chain; Barkeep's bug, nothing to report.
 
@@ -31,7 +31,9 @@ Each has the same shape: what I expected, what I observed, how I measured it, wh
 
 ## Upstream
 
-- [upstream/stellar-contracts-v0.9.0-client-flow-testnet.md](upstream/stellar-contracts-v0.9.0-client-flow-testnet.md): draft issue for OpenZeppelin/stellar-contracts, every value filled in from the run, not posted.
+- [upstream/stellar-contracts-v0.9.0-client-flow-testnet.md](upstream/stellar-contracts-v0.9.0-client-flow-testnet.md): Testnet confirmation of the v0.9.0 client flow, posted 2026-09-18 as [OpenZeppelin/stellar-contracts#897](https://github.com/OpenZeppelin/stellar-contracts/issues/897).
+- [upstream/x402-3352-comment.md](upstream/x402-3352-comment.md): the T3/T4 measurements, posted 2026-09-18 as a [comment on x402#3352](https://github.com/x402-foundation/x402/issues/3352#issuecomment-5727321326).
+- [upstream/x402-fee-ceiling-default.md](upstream/x402-fee-ceiling-default.md): the 50,000-stroop fee ceiling default, posted 2026-09-18 as [x402#3515](https://github.com/x402-foundation/x402/issues/3515).
 
 ## Earlier work, preserved
 

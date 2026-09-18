@@ -1,8 +1,8 @@
-# DRAFT by Claude for the author's review, not posted. Written 2026-09-18 from docs/findings/01.
+# Posted 2026-09-18 as x402-foundation/x402#3515. Drafted by Claude from docs/findings/01.
 
-Intended for `x402-foundation/x402`, as an issue against `@x402/stellar`.
-Nothing here has been sent upstream. Everything below the `---` line is the
-issue body; the `gh issue create` command strips this header.
+https://github.com/x402-foundation/x402/issues/3515
+
+Everything below the `---` line is the issue body as posted.
 
 Title: exact/stellar facilitator: the 50,000-stroop maxTransactionFeeStroops default refuses smart-account payers whose __check_auth calls another contract
 
@@ -10,10 +10,8 @@ Record: `deployments/testnet.json` (`doneTests.x402Spike`); script
 `packages/mcp-server/scripts/x402-spike-testnet.mjs` (commit 27ab3d6);
 `packages/mcp-server/src/facilitator.ts`, relaxation 1.
 
-Read before posting:
+Checked before posting:
 
-- Post the #3352 comment first; this body links to that issue, not to the
-  comment.
 - Checked 2026-09-18: the three transaction links return 200 from
   `api.stellar.expert`, and Horizon's `successful`, ledger and `fee_charged`
   match the record. `GET https://x402.org/facilitator/supported` returns, for
@@ -22,7 +20,6 @@ Read before posting:
   `minResourceFee + BASE_FEE` to `minResourceFee + inclusionFeeStroops`.
 - No figure for a new default is proposed. The record has one payer's cost, not
   a survey.
-- The disclosure says you reviewed this. That has to be true when it is posted.
 
 ---
 
