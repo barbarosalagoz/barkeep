@@ -1,0 +1,14 @@
+{
+  "name": "barkeep-arc-1271-spike",
+  "private": true,
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Throwaway: does an x402 facilitator on Arc testnet accept an ERC-1271 payer? Testnet only.",
+  "dependencies": {
+    "@x402/core": "2.25.0",
+    "@x402/evm": "2.25.0",
+    "solc": "0.8.30",
+    "viem": "^2.37.0"
+  }
+}
