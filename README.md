@@ -37,12 +37,18 @@ Repository: **[github.com/barbarosalagoz/barkeep](https://github.com/barbarosala
 
 `packages/mcp-server` is a local stdio MCP server for Claude Code. A tab is an
 on-chain context rule on a smart account built on OpenZeppelin's
-`stellar-accounts` library. The rule has the agent's session key as its only
+`stellar-accounts` library. The rule has a session key made for that tab as its only
 signer, a spending-limit policy, a payee-allowlist policy, and an expiry. The
 cap and the list of payees are enforced by those policies on chain, not by
 the server. None of these contracts is audited. The allowlist is Barkeep's
 own, since `stellar-accounts` ships none. See
 [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md).
+
+**One key per tab.** `open_tab` makes a fresh agent key for each tab, and
+`close_tab` destroys it once the rule is gone, so a leaked key reaches one tab.
+This is covered by offline tests (`src/agentKeys.test.ts`). Its Testnet
+done-test has not been run yet. The hashes recorded below were made with the
+earlier shared agent key. See [docs/KEY_MANAGEMENT.md](docs/KEY_MANAGEMENT.md).
 
 **Payees fail closed.** `open_tab` takes `payees`, and a transfer to anyone
 else is refused on chain (`Error(Contract, #3901)`). A tab with no list must
@@ -57,7 +63,7 @@ tab was opened is not supported.
 | `open_tab` | Adds the agent rule with a cap, a window, and who it may pay |
 | `pay_and_fetch` | Fetches a URL; on an x402 402 challenge, pays it from the tab |
 | `tab_status` | Limit, spent, remaining and payees, read from the chain, plus receipts |
-| `close_tab` | Removes the rule, revoking the session key |
+| `close_tab` | Removes the rule, revoking the session key, then destroys that key |
 
 ### Who `pay_and_fetch` can pay (read this first)
 

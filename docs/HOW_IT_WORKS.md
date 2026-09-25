@@ -102,13 +102,17 @@ payee allowlist"). The passkey is what separates them. It is registered as
 rule 31 and has signed on chain. The server still reads the ed25519 admin key,
 so the separation is available and I have not used it yet.
 
-No key is ever written by Barkeep. `packages/mcp-server/bin/barkeep-mcp` is
-the wrapper Claude Code launches. It reads the admin, agent and submitter
-secrets from the Stellar CLI's key store at start and passes them through the
-environment, so the MCP registration holds a path and nothing else.
-`packages/mcp-server/src/keys.ts` reads them from the environment and never
-stores them. `packages/mcp-server/src/state.ts` holds tab metadata, receipts
-and idempotency records, and a test asserts no secret lands there. This
+The only key Barkeep writes is each tab's own agent key. `open_tab` makes a
+fresh one per tab, and `close_tab` destroys it
+(`packages/mcp-server/src/agentKeys.ts`). It is one mode-600 file in a
+separate directory next to the state directory, not inside it.
+`packages/mcp-server/bin/barkeep-mcp` is the wrapper Claude Code launches. It
+reads the admin and submitter secrets from the Stellar CLI's key store at
+start and passes them through the environment, so the MCP registration holds a
+path and nothing else. It also reads the older shared agent key if it exists,
+for tabs opened before per-tab keys. `packages/mcp-server/src/state.ts` holds
+tab metadata, receipts and idempotency records, and a test asserts no secret
+lands there. This
 departs from my architecture plan, which had put the session key in the
 plugin's data directory. Keeping a spending key next to the record of what it
 may spend was not worth one saved environment variable.

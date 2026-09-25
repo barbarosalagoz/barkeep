@@ -8,12 +8,20 @@ rows between the two, and do not total them together.
 
 **Today this table is empty. No one other than the author has used Barkeep.**
 
+Barkeep runs on Stellar Testnet only, and its contracts are unaudited. The
+Instaward sprint's target is **at least 10 developers** from the Türkiye
+chapter workshop, each making a real Testnet transaction with a key they
+generated themselves. That target comes from the
+[application](INSTAWARD_APPLICATION.md#success-criteria-and-acceptance-tests),
+criterion S5. Until those rows exist, it is a target, not a result.
+
 ## Rules for adding a row
 
 A row is added only when all of these are true:
 
 1. **The participant generated the signing key themselves**, on their own
-   machine (for example `stellar keys generate`). The author never generated
+   machine (for example `stellar keys generate`, or the kit's `open_tab`
+   running on their machine, which makes a fresh key per tab). The author never generated
    it, never held it and never saw it. A key handed out by the author makes
    the row team-generated, and it does not belong here.
 2. **The transaction is on chain and can be looked up.** The tx hash resolves

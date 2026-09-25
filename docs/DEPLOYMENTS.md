@@ -41,7 +41,7 @@ The other Testnet identities, in the same store:
 | Identity name | Public key | Used by |
 | --- | --- | --- |
 | `barkeep-testnet-admin` | `GAPL4FFWCJ7TLUYU6USLKLXEFR7QIFVQ3XCEVTKO5MNDBO4IQYV5NK44` | open_tab / close_tab, the rule-0 signer |
-| `barkeep-testnet-agent` | `GDUQYLCSWA3CTGCK7XHAW622QRX54Q3FZQWOYUICUNLZZQOHCOXQD5TS` | the tab's session key |
+| `barkeep-testnet-agent` | `GDUQYLCSWA3CTGCK7XHAW622QRX54Q3FZQWOYUICUNLZZQOHCOXQD5TS` | the shared session key of every tab opened before per-tab keys, and of the done-test scripts. `open_tab` now makes a fresh key per tab (see "MCP server state") |
 | `barkeep-testnet-facilitator` | `GACGJIUBFQ2O7RYX26QVGALAQG5BQ6DQI6JNHJ6TPOZE6MHJD7AM5OVK` | pays x402 settlement fees; never the deployer |
 | `barkeep-testnet-seller` | `GASFR7KGGFZR5ODT37BRCHSGK3UP4ULDUV4QU7IAN42ABVCTC53H77H7` | the demo seller's payTo; holds a TAB trustline |
 
@@ -183,9 +183,18 @@ outlive a reboot, and a tab whose record vanished is a live on-chain rule that
 nobody can close by id.
 
 **It holds no key material.** Contract ids, ledger numbers, amounts, transaction
-hashes and the agent's *public* key. Signing keys are read from the environment
-(`BARKEEP_ADMIN_SECRET`, `BARKEEP_AGENT_SECRET`, `BARKEEP_SUBMITTER_SECRET`),
-never written. Barkeep's x402 facilitator (`src/facilitator.ts`) reads
+hashes and the agent's *public* key. The admin and submitter keys are read from
+the environment (`BARKEEP_ADMIN_SECRET`, `BARKEEP_SUBMITTER_SECRET`) and never
+written. `BARKEEP_AGENT_SECRET` is optional now. It is read only to pay from
+tabs opened before per-tab keys.
+
+**Per-tab agent keys** live next to the state directory, not in it:
+`$BARKEEP_AGENT_KEY_DIR`, else `<state dir>-agent-keys` (for example
+`~/.local/state/barkeep-agent-keys`). Each key is one mode-600 file named by its
+public key, in a mode-700 directory. `open_tab` writes it before the rule is
+added, and destroys it again if the tab is not opened. `close_tab` overwrites
+it, then removes it, after the rule is gone from the chain
+(`src/agentKeys.ts`, `src/agentKeys.test.ts`). Barkeep's x402 facilitator (`src/facilitator.ts`) reads
 `BARKEEP_FACILITATOR_SECRET`, the key that pays settlement fees; it authorises
 no payment. `src/server.test.ts` asserts this against the real files.
 
