@@ -28,9 +28,6 @@ These do not block sending. They are listed so nothing is hidden.
   OFAC-sanctioned region
   ([General Rules](https://stellar.gitbook.io/scf-handbook/scf-awards/official-rules-for-submissions)).
   Also, one person may not join more than one team.
-- **Branch protection is off on `main`.** CI is not a required check. Turning
-  it on is a repository setting, and it would change a line in
-  [AI_ASSISTED_DEVELOPMENT.md](AI_ASSISTED_DEVELOPMENT.md).
 - **Optional:** approach one outside builder as an early user. Candidates
   working on the same problem in public: the authors of x402
   [#3158](https://github.com/x402-foundation/x402/issues/3158),

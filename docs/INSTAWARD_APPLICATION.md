@@ -112,17 +112,17 @@ There are three parts, all on Stellar Testnet:
 
 No new contracts are written. The contracts already exist, are tested, and
 are deployed on Testnet
-([deployments/testnet.json](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/deployments/testnet.json)).
+([deployments/testnet.json](https://github.com/barbarosalagoz/barkeep/blob/main/deployments/testnet.json)).
 
 ## Relevance to Stellar
 
 - It is built on OpenZeppelin `stellar-accounts` context rules and the
   `spending_limit` policy. The account's `__check_auth` enforces them on chain
-  ([HOW_IT_WORKS.md](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/HOW_IT_WORKS.md)).
+  ([HOW_IT_WORKS.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/HOW_IT_WORKS.md)).
 - It pays over x402 `exact` on Stellar with `@x402/stellar`
-  ([ARCHITECTURE-v2.md §3.1](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/ARCHITECTURE-v2.md#31-x402-v2-exact-scheme-on-stellar)).
+  ([ARCHITECTURE-v2.md §3.1](https://github.com/barbarosalagoz/barkeep/blob/main/docs/ARCHITECTURE-v2.md#31-x402-v2-exact-scheme-on-stellar)).
 - It adds a payee-allowlist policy, which `stellar-accounts` does not ship
-  ([contracts/barkeep-payee-allowlist](https://github.com/barbarosalagoz/barkeep/tree/9472d1f/contracts/barkeep-payee-allowlist)).
+  ([contracts/barkeep-payee-allowlist](https://github.com/barbarosalagoz/barkeep/tree/main/contracts/barkeep-payee-allowlist)).
 - The friction it documents is already reported upstream (see
   [Upstream work](#upstream-work)).
 
@@ -136,9 +136,9 @@ are deployed on Testnet
 | --- | --- | --- | --- |
 | Account | OpenZeppelin `stellar-accounts` =0.7.2: context rules, `spending_limit` | A thin account contract and its verifiers | On Testnet |
 | Payee limit | The `stellar-accounts` policy interface | `barkeep-payee-allowlist` | On Testnet, 19 unit tests |
-| Agent key | One ed25519 session key per tab, checked by the verifier contract | [`agentKeys.ts`](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/packages/mcp-server/src/agentKeys.ts) | Offline-tested. The Testnet done-test is the sprint's first task |
+| Agent key | One ed25519 session key per tab, checked by the verifier contract | [`agentKeys.ts`](https://github.com/barbarosalagoz/barkeep/blob/main/packages/mcp-server/src/agentKeys.ts) | Offline-tested. The Testnet done-test is the sprint's first task |
 | Human signer | WebAuthn passkey through a verifier contract | `barkeep-verifier-webauthn` | Passkey-signed transfer: [`f6a66a60…`](https://stellar.expert/explorer/testnet/tx/f6a66a603e160bb63e539b458acec6b6245f930d54ac8dc2918108397999ce17) |
-| Payment | x402 v2 `exact`, `@x402/stellar` 2.25.0 | A client scheme that signs as the smart account ([x402Scheme.ts](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/packages/mcp-server/src/x402Scheme.ts)), plus a facilitator with two checks relaxed ([facilitator.ts](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/packages/mcp-server/src/facilitator.ts)) | Works only with a facilitator that accepts smart-account payers |
+| Payment | x402 v2 `exact`, `@x402/stellar` 2.25.0 | A client scheme that signs as the smart account ([x402Scheme.ts](https://github.com/barbarosalagoz/barkeep/blob/main/packages/mcp-server/src/x402Scheme.ts)), plus a facilitator with two checks relaxed ([facilitator.ts](https://github.com/barbarosalagoz/barkeep/blob/main/packages/mcp-server/src/facilitator.ts)) | Works only with a facilitator that accepts smart-account payers |
 | Agent interface | MCP (stdio) | `open_tab`, `pay_and_fetch`, `tab_status`, `close_tab` | Testnet |
 
 **The facilitator fork is a workaround, not the goal.** Each relaxed check is
@@ -147,7 +147,7 @@ facilitator once upstream accepts smart-account payers.
 
 **Not composed today:**
 - MPP (`@stellar/mpp`), deferred in
-  [ARCHITECTURE-v2.md §3.2](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/ARCHITECTURE-v2.md#32-mpp-and-what-session-really-means);
+  [ARCHITECTURE-v2.md §3.2](https://github.com/barbarosalagoz/barkeep/blob/main/docs/ARCHITECTURE-v2.md#32-mpp-and-what-session-really-means);
 - the OpenZeppelin Relayer x402 facilitator, which has not been measured with
   a smart-account payer.
 
@@ -157,13 +157,13 @@ facilitator once upstream accepts smart-account payers.
 
 **None.** There are no external users, partners, revenue or third-party
 deployments. The table that will record them is
-[EXTERNAL_USAGE.md](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/EXTERNAL_USAGE.md),
+[EXTERNAL_USAGE.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/EXTERNAL_USAGE.md),
 and it is empty.
 
 ### [TEAM · TESTNET] Barkeep on Stellar Testnet
 
 All of this was made by me, with my own keys. Every hash is in
-[deployments/testnet.json](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/deployments/testnet.json).
+[deployments/testnet.json](https://github.com/barbarosalagoz/barkeep/blob/main/deployments/testnet.json).
 
 | Behaviour | Result | Evidence |
 | --- | --- | --- |
@@ -178,7 +178,7 @@ All of this was made by me, with my own keys. Every hash is in
 | Agent tries to add a payee | Refused, `#3002` | [`ff51d3a1…`](https://stellar.expert/explorer/testnet/tx/ff51d3a16cef73ef922a1d9f0d3537362a85e0f02dc4b4d6e6b2bb71ca571afc) |
 | Empty payee list forced into a rule | Refused, `#3902 EmptyAllowlist` | [`b195c7ff…`](https://stellar.expert/explorer/testnet/tx/b195c7ff78737ad4a4c5ec933ac613d532057aa91e5c52ecc18aa2d009e4a0b6) |
 | Full demo through the MCP server, 2026-09-14 | 3 payments, then close | [`7f0ec6c1…`](https://stellar.expert/explorer/testnet/tx/7f0ec6c1b882a5af712bab10771afad45ea02b58c3ec207829307267ea13d573), [`a63f510b…`](https://stellar.expert/explorer/testnet/tx/a63f510ba511148b82260d64a72f66ca2c2936c21b3b91626ffc4968c6fef1ab) |
-| Public facilitator against a capped smart account | Refused (fee ceiling, event check). Settles with both checks relaxed | [`c02f9035…`](https://stellar.expert/explorer/testnet/tx/c02f9035c0eb0250a619633c192aca4e43996a89dad927f7236f7508aab64aaf), [finding 01](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/findings/01-x402-public-facilitator-refuses-policy-events.md) |
+| Public facilitator against a capped smart account | Refused (fee ceiling, event check). Settles with both checks relaxed | [`c02f9035…`](https://stellar.expert/explorer/testnet/tx/c02f9035c0eb0250a619633c192aca4e43996a89dad927f7236f7508aab64aaf), [finding 01](https://github.com/barbarosalagoz/barkeep/blob/main/docs/findings/01-x402-public-facilitator-refuses-policy-events.md) |
 
 These runs used the shared agent key from before per-tab keys existed.
 
@@ -187,7 +187,7 @@ These runs used the shared agent key from before per-tab keys existed.
 - offline unit tests: 143 passing.
 
 CI runs both, plus lint, typecheck and build, on every PR
-([ci.yml](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/.github/workflows/ci.yml)).
+([ci.yml](https://github.com/barbarosalagoz/barkeep/blob/main/.github/workflows/ci.yml)).
 
 ### [TEAM · ARC MAINNET] The same design on Circle's Arc mainnet
 
@@ -224,7 +224,7 @@ me.
 | S2 | The kit is checked | A CI job builds the kit and runs its offline tests on every PR. The per-tab key done-test (pay, close, refused after close) is run on Testnet and its hashes recorded | CI run link, tx hashes |
 | S3 | Guide in English and Turkish | Both merged. Every command in them has been run, with its output recorded | Commit link |
 | S4 | Workshop held through the Türkiye chapter | Event page or chapter announcement | Link |
-| S5 | **At least 10 developers from the workshop make real Testnet transactions with their own keys** | Each hash is listed, with that person's written consent, in [EXTERNAL_USAGE.md](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/EXTERNAL_USAGE.md), separate from my own activity | Tx hashes, consent record |
+| S5 | **At least 10 developers from the workshop make real Testnet transactions with their own keys** | Each hash is listed, with that person's written consent, in [EXTERNAL_USAGE.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/EXTERNAL_USAGE.md), separate from my own activity | Tx hashes, consent record |
 | S6 | Feedback | A short anonymous form. Results are published unedited | Link |
 
 ## Timeline (30 days)
@@ -268,11 +268,11 @@ $0.
   - There is no second maintainer and no second key-holder.
   - The work is in a public Apache-2.0 repo, and every deployment can be
     reproduced
-    ([DEPLOYMENTS.md](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/DEPLOYMENTS.md)).
+    ([DEPLOYMENTS.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/DEPLOYMENTS.md)).
 - **Unaudited contracts.** None of Barkeep's contracts is audited.
   - OpenZeppelin's own audits cover the `stellar-accounts` library at
     v0.7.0-rc.1, four tags behind the 0.7.2 that Barkeep uses
-    ([ARCHITECTURE-v2.md §4.1](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/ARCHITECTURE-v2.md#41-what-is-audited-and-what-is-not)).
+    ([ARCHITECTURE-v2.md §4.1](https://github.com/barbarosalagoz/barkeep/blob/main/docs/ARCHITECTURE-v2.md#41-what-is-audited-and-what-is-not)).
   - The sprint stays on Testnet.
 - **A known gap in the deployed account.** Under 0.7.2, the auth digest is
   not scoped to the account.
@@ -299,7 +299,7 @@ $0.
     Testnet keys were lost. That is disclosed in full.
 
   Full record:
-  [KEY_MANAGEMENT.md](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/KEY_MANAGEMENT.md).
+  [KEY_MANAGEMENT.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/KEY_MANAGEMENT.md).
 
 ## Competitive landscape
 
@@ -341,11 +341,13 @@ around it.
   touching the contracts and the MCP server.
 - **Quality checks:** CI runs the tests on every PR. On-chain claims come
   from recorded Testnet runs, with refusals forced on chain.
-- **Not in place:** branch protection, mutation testing and external review.
+- **Branch protection:** `main` requires a pull request and green CI, and
+  the rule applies to admins too.
+- **Not in place:** mutation testing and external review.
 - **Findings 03 and 06:** Found by Barbaros.
 
 Full statement:
-[AI_ASSISTED_DEVELOPMENT.md](https://github.com/barbarosalagoz/barkeep/blob/9472d1f/docs/AI_ASSISTED_DEVELOPMENT.md).
+[AI_ASSISTED_DEVELOPMENT.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/AI_ASSISTED_DEVELOPMENT.md).
 
 ## After the sprint
 
