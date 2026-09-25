@@ -61,7 +61,7 @@ Right now, agents spend tokens without any real control, and we can end up with 
 
 ### 2. Why the cap lives on chain
 
-Keeping the cap on chain means the limit lives in the same contract that holds the money. A rule on a server can set a limit too, but if that server or the agent's key is compromised, the rule can be bypassed. On chain, even a stolen agent key can only spend what the tab holds, only to its payees, only up to the per-call maximum and only before expiry. I proved this on Arc mainnet with Barkeep Arc, where every refusal case has an on-chain revert hash.
+Keeping the cap on chain means the limit is enforced by the same account that holds the money. A rule on a server can set a limit too, but if that server or the agent's key is compromised, the rule can be bypassed. On chain, even a stolen agent key can only spend up to the tab's cap, only to its payees and only before expiry. I proved this on Arc mainnet with Barkeep Arc, where every refusal case has an on-chain revert hash.
 
 > **Evidence.**
 >
@@ -76,10 +76,6 @@ Keeping the cap on chain means the limit lives in the same contract that holds t
 > - over the cap: `#3221`, [`6f001e4a…`](https://stellar.expert/explorer/testnet/tx/6f001e4a2266bedf8b016e4fde5a978cc4ae06a5f22a79545fe67d7b51ca0f47)
 > - payee not on the list: `#3901`, [`681ae9ea…`](https://stellar.expert/explorer/testnet/tx/681ae9eae8d09c83f49b8977755687deae564458c4680589d9f88e0ab4a7b4d0)
 > - after expiry: `#3002`, [`b253a6f8…`](https://stellar.expert/explorer/testnet/tx/b253a6f86e311cc5704d83b7a507bc099d688513f398547614fb9cc40295be46)
->
-> **One difference on Stellar:** the per-call maximum (`max_amount`) is enforced
-> by the MCP server, not on chain. On chain, the cap applies to each rolling
-> window.
 
 ### 3. Why a narrow scope, and why a workshop
 
@@ -95,7 +91,7 @@ I was the trainer for Rise In's first Stellar developer cohort, and we took the 
 
 After 30 days, at least 10 developers from the workshop have made real transactions with their own keys, recorded separately from my own activity. The improvements Stellar provides and recommends are defined quickly, added to the architecture and turned into an ongoing process, so that it can scale and keep going.
 
-> Sections 1–5 are written from Barbaros's own notes in Turkish; English translation and light editing assisted by AI.
+> Sections 1–5 are written from Barbaros's own notes in Turkish; English translation and light editing assisted by AI. One factual correction made with AI assistance, approved by Barbaros.
 
 ---
 
@@ -297,7 +293,8 @@ $0.
   - **The MCP server still holds the admin key.**
   - **Arc mainnet:** the owner key was generated fresh for each funding
     attempt. Unused keys were destroyed. Agent keys were destroyed on close.
-    The owner key file is gone after the run.
+    On 2026-09-24 the owner and seller keys were shredded, and a full disk
+    search found no copies.
   - **An Arc Testnet machine was wiped on 2026-09-21 with no backup,** and its
     Testnet keys were lost. That is disclosed in full.
 
@@ -335,7 +332,7 @@ around it.
 
 ## AI-assisted development
 
-> Sections 1–5 are written from Barbaros's own notes in Turkish; English translation and light editing assisted by AI.
+> Sections 1–5 are written from Barbaros's own notes in Turkish; English translation and light editing assisted by AI. One factual correction made with AI assistance, approved by Barbaros.
 
 - **The rest of this application** was drafted with Claude Code from the
   repository record.

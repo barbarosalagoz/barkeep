@@ -75,7 +75,7 @@ Kind of evidence:
 | 31 | One session key per tab, destroyed on close | Commit `5d0b427`, `agentKeys.test.ts` (11 offline tests) | CODE | Only as "implemented and offline-tested". Testnet run pending (sprint S2) |
 | 32 | Trainer for Rise In's first Stellar developer cohort | Nothing in the repo | — | Author's statement (application section 4). **Needs** a Rise In confirmation or link before it is sent |
 | 33 | A per-call maximum enforced on chain | Arc: yes (reverts). Stellar: no, `max_amount` is enforced by the MCP server | T-ARC | Only for Arc. The application states the Stellar difference under section 2 |
-| 34 | Arc mainnet keys after the run | Agent-key directory empty; `keys.json` absent on the machine that ran it, 2026-09-25 | Observed on the machine | Yes, as observed ([barkeep-arc#11](https://github.com/barbarosalagoz/barkeep-arc/pull/11)). "No other copy exists" is for the author to confirm |
+| 34 | Arc mainnet keys destroyed after the run | Step 8 on 2026-09-24: shredded; a full disk search found no copies. The plan is in [barkeep-arc#9](https://github.com/barbarosalagoz/barkeep-arc/pull/9); the record is in [barkeep-arc#11](https://github.com/barbarosalagoz/barkeep-arc/pull/11). On the machine, `keys.json` is gone and the agent-key directory is empty | T-ARC, author's record | Yes |
 
 ## Appendix C: Checklist pass (updated 2026-09-25, after Option B was chosen)
 

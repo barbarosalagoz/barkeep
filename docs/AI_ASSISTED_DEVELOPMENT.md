@@ -11,7 +11,7 @@ Where the record is silent, this file says so rather than guessing.
 Barkeep runs on **Stellar Testnet only**. Its contracts are **unaudited**, and
 it has **no external users yet**.
 
-> Sections 1–5 are written from Barbaros's own notes in Turkish; English translation and light editing assisted by AI.
+> Sections 1–5 are written from Barbaros's own notes in Turkish; English translation and light editing assisted by AI. One factual correction made with AI assistance, approved by Barbaros.
 
 (This refers to sections 1–5 of the
 [Instaward application](INSTAWARD_APPLICATION.md#in-my-own-words), the
@@ -70,7 +70,7 @@ carries `Co-Authored-By: Claude Opus 5.5` trailers. That includes:
 | White Belt dApp (2026-08-24) | Not recorded | No trailer |
 | Findings, walkthrough, architecture, upstream posts | Drafted with it | The docs' own headers |
 | Findings 03 and 06: what they found | Found by Barbaros. | The author |
-| Instaward application, sections 1–5 | Written from Barbaros's own notes in Turkish; English translation and light editing assisted by AI | The author |
+| Instaward application, sections 1–5 | Written from Barbaros's own notes in Turkish; English translation and light editing assisted by AI. One factual correction made with AI assistance, approved by Barbaros | The author |
 | The rest of the Instaward application, this file, KEY_MANAGEMENT, EXTERNAL_USAGE | Drafted with it from the repository record | Commit trailers |
 
 ## How quality is enforced
@@ -143,6 +143,9 @@ This section records only what the author has stated.
 - **Sections 1–5 of the Instaward application** are the author's own text.
   They were written from notes in Turkish, then translated and lightly edited
   with AI assistance.
+  One factual correction to section 2 was made with AI assistance and approved
+  by Barbaros. On Stellar the per-call maximum is enforced by the MCP server,
+  not on chain, so section 2 no longer lists it.
 - **Findings 03 and 06:** Found by Barbaros.
 - **The narrow scope and the workshop format** are the author's choice, made
   as a trainer (application, section 3).

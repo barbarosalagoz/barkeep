@@ -21,9 +21,6 @@ Each item below is a `[CHAPTER: …]` field in the application.
 
 These do not block sending. They are listed so nothing is hidden.
 
-- **[barkeep-arc#11](https://github.com/barbarosalagoz/barkeep-arc/pull/11).**
-  Confirm that no copy of `keys.json` exists anywhere, then merge it. It is
-  the key-state line for Arc mainnet.
 - **The per-tab key Testnet done-test.** It is scheduled as the sprint's
   first task (S2). It needs the Stellar CLI and the Testnet identities, which
   are not on the machine where the code was written.

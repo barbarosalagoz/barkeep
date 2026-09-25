@@ -28,9 +28,9 @@ Where the record is silent, this file says "not recorded".
 | Demo seller | Stellar Testnet | `stellar keys generate` | Stellar CLI key store | Never | No |
 | Human signer passkey | Stellar Testnet | Inside the authenticator (WebAuthn) | Inside the authenticator; never leaves it | — | Not recorded |
 | Any key | **Stellar mainnet** | **None exists** | — | — | — |
-| Owner | Arc mainnet | `barkeep-arc-owner keygen`, fresh for each funding attempt | `keys.json`, mode 600 | A new key per attempt | Two unused keys destroyed. The funded key's file no longer exists on the machine (see below) |
+| Owner | Arc mainnet | `barkeep-arc-owner keygen`, fresh for each funding attempt | `keys.json`, mode 600 | A new key per attempt | Yes. The two unused keys on 2026-09-21 and 2026-09-23. The funded key on 2026-09-24, in step 8 (see below) |
 | Agent, per tab | Arc mainnet | By the MCP server when a tab opens | One mode-600 file per tab, in a mode-700 directory | One key per tab | Yes, by `close_tab`. The directory is empty |
-| Demo seller, second seller | Arc mainnet | Named keys in `keys.json` | `keys.json`, mode 600 | — | The file no longer exists on the machine (see below) |
+| Demo seller, second seller | Arc mainnet | Named keys in `keys.json` | `keys.json`, mode 600 | — | Yes, on 2026-09-24, in step 8 (see below) |
 | Deployer, relayer, seller, demo agent | Arc Testnet | As above | `~/.local/state/barkeep-arc` on a Mac | — | **Lost** on 2026-09-21 (see below) |
 
 ## Stellar Testnet (this repository)
@@ -132,7 +132,7 @@ record what happens to every key.
 The run was on Arc mainnet, chain 5042, on 2026-09-24. Sources:
 - [docs/MAINNET.md](https://github.com/barbarosalagoz/barkeep-arc/blob/5c211a5/docs/MAINNET.md)
 - [docs/PHASE5_PRECONDITIONS.md](https://github.com/barbarosalagoz/barkeep-arc/blob/5c211a5/docs/PHASE5_PRECONDITIONS.md)
-- the key-state check of 2026-09-25, proposed for MAINNET.md in
+- the step-8 key record, added to MAINNET.md in
   [barkeep-arc#11](https://github.com/barbarosalagoz/barkeep-arc/pull/11)
 
 ### Owner key
@@ -158,10 +158,14 @@ The run was on Arc mainnet, chain 5042, on 2026-09-24. Sources:
   - The owner swept its balance back to the exchange
     ([`0x7b8d4b27…`](https://explorer.arc.io/tx/0x7b8d4b27e640c7d72c66b287951d12273ff41dfd0c44fb12f462e234bc5caa5b)).
     0.000018025 USDC of dust remains.
-  - On 2026-09-25, `keys.json` no longer exists on the machine that ran the
-    phase. Its directory was last modified at 17:45 (UTC+3) on 2026-09-24,
-    after the sweeps.
-  - No other copy of the file is recorded.
+  - **Destroyed on 2026-09-24, in step 8 of phase 5.** The plan in [barkeep-arc#9](https://github.com/barbarosalagoz/barkeep-arc/pull/9)
+    says: "the mainnet keys still exist and are destroyed after approval
+    (step 8)".
+  - The author's step-8 record: the key file was shredded, and a full search
+    of the disk found no copies.
+  - The machine agrees. On 2026-09-25, `keys.json` does not exist there, and
+    its directory was last modified at 17:45 (UTC+3) on 2026-09-24, after the
+    sweeps.
 
 ### Agent keys
 
@@ -190,7 +194,8 @@ The code says `keys.json` holds "the owner, and … the demo seller"
 - The seller swept its takings back to the owner
   ([`0xe81928c4…`](https://explorer.arc.io/tx/0xe81928c499cc2b874a9b2c19beccf7425e67b78b059a6dc7f17506c4f2bcc9be)).
 - 0.00000824 USDC of dust remains.
-- Their file no longer exists on the machine, as above.
+- They were destroyed with the owner key in step 8 on 2026-09-24: shredded,
+  with no copies found by a full disk search.
 
 ### What the record holds
 
@@ -228,15 +233,18 @@ stated as recorded there:
   person and one machine held every key, with no backup.
 - The contracts behaved as designed, and the factory has no admin, so a new
   owner key can use it. The failure was operational.
-- The records do not say that a backup practice was adopted afterwards.
-  Until they do, this file treats "one machine, no backup" as still true.
+- For the Arc mainnet keys, "no copy" was the goal, and it was checked: step
+  8 shredded them, and a full disk search found no copies.
+- For long-lived keys that must survive, no backup practice is recorded.
+  Until one is, this file treats "one machine, no backup" as still true for
+  them.
 
 ## Single points of failure
 
 | Point | Effect if it fails | Today |
 | --- | --- | --- |
 | One person holds every key | Loss, compromise or absence stops everything | True on both chains |
-| One machine holds every key, no backup | Keys are lost, as on 2026-09-21 | No backup practice is recorded, so treated as true |
+| One machine holds every key, no backup | Keys are lost, as on 2026-09-21 | No backup practice is recorded for long-lived keys, so treated as true. The Arc mainnet keys were destroyed deliberately |
 | Stellar MCP server holds the admin key | A compromised server can act as the human's rule-0 signer | True. Fixed on Arc, not yet on Stellar |
 | Agent key leak | Reaches one tab, up to its cap, payees and expiry | Per-tab keys since `5d0b427`. Older tabs still share one key until closed or expired |
 | Passkey is the human signer | A lost authenticator loses that signer. Recovery is an open question ([ARCHITECTURE-v2.md §14](ARCHITECTURE-v2.md#14-open-questions) Q3) | Rule 0's ed25519 admin key still exists alongside it |
