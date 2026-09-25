@@ -43,7 +43,9 @@ Independent usage is **zero** today, and the panel names this first. Even with O
 
 ## 4. Fix or remove barkeep.dev
 
-The README says "Home: **barkeep.dev**". On 2026-09-25 that URL served a registrar's parked-domain page. A reviewer who clicks it lands on a parking page. Either put up a one-page site that links the repo and the evidence, or remove the link from the README and the application.
+**Done in PR #12:** every barkeep.dev link now points to the GitHub repo. The PromptRail Vercel app is linked only under History, because it is the belt-era dApp, not the tab. Point barkeep.dev somewhere real before adding it back.
+
+Before the fix, the README said "Home: **barkeep.dev**". On 2026-09-25 that URL served a registrar's parked-domain page. A reviewer who clicks it lands on a parking page. Either put up a one-page site that links the repo and the evidence, or remove the link from the README and the application.
 
 ## 5. Decide on a Stellar mainnet flow (optional)
 
@@ -66,11 +68,15 @@ The README says "Home: **barkeep.dev**". On 2026-09-25 that URL served a registr
 
 ## 6. Close the key-management record
 
+**Drafted in PR #12:** [KEY_MANAGEMENT.md](KEY_MANAGEMENT.md). What is left for you is its [BARBAROS: CONFIRM] markers. The open items are listed below.
+
 - **Arc:** `docs/MAINNET.md` does not say whether the mainnet **owner** key and **demo seller** key were destroyed or kept, and both addresses still hold dust. Add one line for each key, saying where it is now.
 - **Stellar:** [DEPLOYMENTS.md](DEPLOYMENTS.md) covers generation and storage. Add rotation (currently none) and destruction (currently none, because Testnet keys are throwaway). One honest sentence each is enough.
 - **Single point of failure:** the 2026-09-21 Arc Testnet key loss (barkeep-arc `docs/TESTNET.md`) is a real single-point-of-failure event. Keep it disclosed. Say what you changed afterwards, for example backups or where state lives.
 
 ## 7. Add a repo-level AI-assisted development statement
+
+**Drafted in PR #12:** [AI_ASSISTED_DEVELOPMENT.md](AI_ASSISTED_DEVELOPMENT.md), linked from the README. What is left for you is its [BARBAROS: CONFIRM] markers.
 
 The upstream posts disclose AI use, but the repo has no single statement. Add a short section to the README. Base it on §13 of the application, and add your own account of what you check.
 
@@ -81,6 +87,8 @@ While you are there, consider adding mutation testing to this repo. For example,
 The first award is $1,000–$5,000, paid in XLM. The options are 92 or 94 hours. A $5,000 ask works out to about $53–54 per hour. Choose your own rate and make the arithmetic in §11 add up. The ~$30k reference ceiling in the panel feedback is for a larger programme and does not apply to this one.
 
 ## 9. Narrow what a reviewer sees
+
+**Done in PR #12:** the README now opens on the tab, with a status box. PromptRail, the SEP ramp, the v0.9 twin and the Arc sibling have moved to a History section at the bottom.
 
 The README still opens with PromptRail history, the SEP ramp, the v0.9 twin deployment and a pointer to the Arc sibling. Before sending, make sure the first screen of the README is the tab, its evidence, and the one sprint deliverable. You can also close or finish the stale open [PR #2](https://github.com/barbarosalagoz/barkeep/pull/2) (Orange Belt, open since 2026-08-28).
 

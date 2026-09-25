@@ -1,25 +1,35 @@
 # Barkeep
 
-**Open a tab for your AI agent.**
+**A spending-capped, payee-limited agent account on Stellar.**
 
-Barkeep is a Stellar dApp for machine payments. A human opens a tab with a
-spending cap and a time window. An agent spends against it to pay for HTTP
-requests. Every payment lands on an itemised bill.
+A human opens a *tab* for an AI agent: a cap, a list of who the agent may pay,
+and an expiry. The agent pays for HTTP requests (x402) against it. The cap and
+the payee list are enforced on chain by policy contracts on an OpenZeppelin
+smart account, not by the agent or its server. Every payment lands on an
+itemised bill.
 
-Home: **[barkeep.dev](https://barkeep.dev)**
+Repository: **[github.com/barbarosalagoz/barkeep](https://github.com/barbarosalagoz/barkeep)**
 
-> **What ships today.** The MCP server in `packages/mcp-server`, on Stellar
-> Testnet. It opens a tab, pays for HTTP requests against it, reports the bill
-> and closes it. See [The tab (MCP server)](#the-tab-mcp-server-testnet),
-> including what it **cannot** pay yet. The cap and the payee list are
-> enforced on chain by policy contracts on an OpenZeppelin smart account. The
-> bill dashboard and plugin packaging are still a plan. The design is in
-> [docs/ARCHITECTURE-v2.md](docs/ARCHITECTURE-v2.md).
+> **Status, read first.**
 >
-> The project was previously named **PromptRail**. Its Stellar Journey to
-> Mastery (Yellow Belt) submission record is preserved under the old name in
-> [docs/YELLOW_BELT.md](docs/YELLOW_BELT.md): the Payment Tracker escrow
-> contract, the multi-wallet dApp and the deployment the submission links to.
+> - **Stellar Testnet only.** Nothing here runs on Stellar mainnet.
+> - **Unaudited.** None of Barkeep's contracts is audited; see
+>   [ARCHITECTURE-v2.md §4.1](docs/ARCHITECTURE-v2.md#41-what-is-audited-and-what-is-not)
+>   before repeating any audit claim.
+> - **No external users yet.** Every transaction in this repository's records
+>   was made by the author, with keys the author holds. Usage by anyone else is recorded
+>   separately, in [docs/EXTERNAL_USAGE.md](docs/EXTERNAL_USAGE.md), and that
+>   table is empty today.
+> - **Pays only sellers whose x402 facilitator accepts a smart-account payer.**
+>   The public facilitator does not yet; see
+>   [Who `pay_and_fetch` can pay](#who-pay_and_fetch-can-pay-read-this-first).
+> - **Built with an AI coding assistant.** What that covers and how quality is
+>   enforced: [docs/AI_ASSISTED_DEVELOPMENT.md](docs/AI_ASSISTED_DEVELOPMENT.md).
+>   How keys are handled: [docs/KEY_MANAGEMENT.md](docs/KEY_MANAGEMENT.md).
+>
+> What ships today is the MCP server in `packages/mcp-server`. The bill
+> dashboard and plugin packaging are still a plan; the design is in
+> [docs/ARCHITECTURE-v2.md](docs/ARCHITECTURE-v2.md).
 
 ---
 
@@ -157,6 +167,24 @@ where it has or has not been reported. Index in
 6. [The WebAuthn verifier passed its done-test and could never be called by the account](docs/findings/06-webauthn-verifier-sig-data-not-xdr.md)
 
 ---
+
+
+## Evidence and records
+
+| What | Where | Who generated it |
+| --- | --- | --- |
+| Contract ids, wasm hashes, every done-test's tx hashes and refusal codes | [deployments/testnet.json](deployments/testnet.json) | The author, on Testnet |
+| Test suites | `cargo test --workspace`, `npm run test:unit`; both run in [CI](.github/workflows/ci.yml) on every PR | — |
+| Usage by anyone other than the author | [docs/EXTERNAL_USAGE.md](docs/EXTERNAL_USAGE.md) (empty today) | Third parties, with consent |
+| Findings reported upstream | [docs/README.md](docs/README.md#upstream) | The author |
+| How AI was used | [docs/AI_ASSISTED_DEVELOPMENT.md](docs/AI_ASSISTED_DEVELOPMENT.md) | — |
+| Keys: generation, storage, rotation, destruction | [docs/KEY_MANAGEMENT.md](docs/KEY_MANAGEMENT.md) | — |
+
+The two kinds of record are never mixed: the author's runs stay in
+`deployments/*.json`, and a row goes into the external usage table only when
+the person who made the transaction generated their own key and consented to
+its listing.
+
 ---
 
 ## Project Structure
@@ -171,9 +199,9 @@ barkeep/
 │   ├── barkeep-payee-allowlist/     # payee allowlist policy (ours; unaudited)
 │   ├── barkeep-verifier-ed25519/    # signature verifiers the account calls
 │   ├── barkeep-verifier-webauthn/
-│   ├── barkeep-v09-*/               # the same set on stellar-accounts 4529d70 (#868)
 │   ├── barkeep-auth-probe/
-│   └── payment-tracker/             # Yellow Belt escrow contract: frozen, see docs/YELLOW_BELT.md
+│   ├── barkeep-v09-*/               # history: the same set on stellar-accounts 4529d70 (#868)
+│   └── payment-tracker/             # history: Yellow Belt escrow contract, frozen
 │
 ├── packages/
 │   ├── core/                        # @barkeep/core: SDK-free primitives (errors, network)
@@ -182,28 +210,60 @@ barkeep/
 │   │   ├── bin/barkeep-mcp          #   wrapper Claude Code launches; reads keys from the Stellar CLI store
 │   │   ├── src/                     #   the tools, the x402 client scheme, the facilitator, the seller
 │   │   └── scripts/                 #   the Testnet done-tests (hashes in deployments/testnet.json)
-│   └── web/                         # @barkeep/web: the PromptRail dApp (Yellow Belt) and the SEP ramp
+│   └── web/                         # history: the PromptRail dApp (Yellow Belt) and the SEP ramp
 │       └── build/                   #   the third-party licence gate
 │
 ├── deployments/
 │   ├── testnet.json                 # contract ids, wasm hashes, and every done-test's tx hashes
-│   └── testnet-v09.json
+│   └── testnet-v09.json             # history: the 4529d70 twin deployment
 │
 ├── docs/
 │   ├── README.md                    # index of the docs below
 │   ├── HOW_IT_WORKS.md              # one payment walked through, file by file
 │   ├── findings/                    # six things found while building, with their evidence
 │   ├── ARCHITECTURE-v2.md           # the design; §4.1 is the audit position
-│   ├── DEPLOYMENTS.md               # keys, identities, how to redeploy
-│   ├── YELLOW_BELT.md               # the PromptRail submission record, preserved
-│   ├── SUBMISSION_PACK.md
-│   ├── SEP_RAMP.md
-│   └── screenshots/
+│   ├── DEPLOYMENTS.md               # identities, how to redeploy
+│   ├── KEY_MANAGEMENT.md            # key lifecycle, Testnet and the Arc mainnet run
+│   ├── AI_ASSISTED_DEVELOPMENT.md   # what was written with Claude Code, and how it is checked
+│   ├── EXTERNAL_USAGE.md            # third-party usage, kept apart from the author's runs
+│   ├── INSTAWARD_*.md               # SCF Instaward draft and pre-send gaps
+│   └── YELLOW_BELT.md, SUBMISSION_PACK.md, SEP_RAMP.md, screenshots/   # history
 │
 ├── scripts/                         # verifier checks, passkey registration and signing pages
 ├── package.json                     # npm workspaces: packages/*
 └── README.md
 ```
+
+---
+
+## History
+
+Barkeep grew out of earlier work in this repository. None of it is part of
+the product above; it is kept because it was submitted or measured under
+these names and the records should stay verifiable.
+
+- **PromptRail (Stellar Journey to Mastery, Rise In).** The project was
+  previously named PromptRail. Its White and Yellow Belt work (a multi-wallet
+  Testnet dApp and the Payment Tracker escrow contract) is preserved under the
+  old name in [docs/YELLOW_BELT.md](docs/YELLOW_BELT.md), with the paste-ready
+  submission text in [docs/SUBMISSION_PACK.md](docs/SUBMISSION_PACK.md). That
+  dApp is still deployed at
+  [promptrail-ten.vercel.app](https://promptrail-ten.vercel.app/) (Testnet). It
+  is the belt-era app, not the tab.
+- **The TRY on/off-ramp (SEP-1, 10, 38, 6).** An integration against the Rise
+  In TR Mock Anchor, in `packages/web`: [docs/SEP_RAMP.md](docs/SEP_RAMP.md).
+  Finding 05 comes from it.
+- **The v0.9 twin deployment.** The same contracts built on the unpublished
+  `stellar-accounts` v0.9.0 branch (`4529d70`) and deployed next to 0.7.2, to
+  confirm the account-scoped auth digest and the client flow before migrating:
+  `contracts/barkeep-v09-*`, [deployments/testnet-v09.json](deployments/testnet-v09.json),
+  [docs/MIGRATION-stellar-accounts-0.9.0.md](docs/MIGRATION-stellar-accounts-0.9.0.md),
+  reported as [OpenZeppelin/stellar-contracts#897](https://github.com/OpenZeppelin/stellar-contracts/issues/897).
+  The product stays on 0.7.2 until 0.9.0 is published.
+- **Barkeep on Arc.** The same design rebuilt on Circle's Arc, including a
+  small mainnet run: [barbarosalagoz/barkeep-arc](https://github.com/barbarosalagoz/barkeep-arc).
+  A separate repository and a different chain; nothing in it is evidence about
+  Stellar.
 
 ---
 

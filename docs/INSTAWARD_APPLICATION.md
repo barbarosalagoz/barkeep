@@ -123,7 +123,7 @@ The full claim-by-claim table is [Appendix B](#appendix-b-evidence-audit).
 
 ### [EXTERNAL] Independent third-party usage
 
-**None.** There are no external users, no partners, no revenue and no third-party deployments. The GitHub repo has 0 stars and 0 forks (checked 2026-09-25).
+**None.** There are no external users, no partners, no revenue and no third-party deployments. The table that will record them is [docs/EXTERNAL_USAGE.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/EXTERNAL_USAGE.md), and it is empty. The GitHub repo has 0 stars and 0 forks (checked 2026-09-25).
 
 ### [TEAM · TESTNET] Barkeep on Stellar Testnet
 
@@ -216,6 +216,8 @@ The handbook gives no budget format and no hourly-rate guidance for Instawards. 
 
 ## 12. Risks and single points of failure
 
+The key lifecycle is covered in full in [docs/KEY_MANAGEMENT.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/KEY_MANAGEMENT.md).
+
 - **One-person team.** If I stop, the project stops. There is no second maintainer and no second key-holder. Mitigations:
   - everything is in a public, Apache-2.0 repo;
   - every deployment can be reproduced from [DEPLOYMENTS.md](https://github.com/barbarosalagoz/barkeep/blob/ef0dc73/docs/DEPLOYMENTS.md).
@@ -232,6 +234,8 @@ The handbook gives no budget format and no hourly-rate guidance for Instawards. 
 - **Regulatory.** The Arc repo states it is "not a payment service in Türkiye". This sprint handles no real funds.
 
 ## 13. AI-assisted development
+
+The full statement is [docs/AI_ASSISTED_DEVELOPMENT.md](https://github.com/barbarosalagoz/barkeep/blob/main/docs/AI_ASSISTED_DEVELOPMENT.md).
 
 - **How it was used.** Much of this repository was written with an AI coding assistant (Claude Code, Anthropic models).
   - 47 of 62 commits carry a `Co-Authored-By: Claude …` trailer. I counted them with `git log` on 2026-09-25.
@@ -321,7 +325,7 @@ Kind of evidence:
 | 22 | External users, usage or partners | None | — | **Cannot claim** |
 | 23 | Revenue or pricing | None | — | **Cannot claim** |
 | 24 | Audited | Not audited | — | **Cannot claim.** Use the §4.1 wording |
-| 25 | Website at barkeep.dev | On 2026-09-25 it serves a parked-domain page from the registrar | — | **Cannot claim.** Fix it or remove the link |
+| 25 | Website at barkeep.dev | On 2026-09-25 it served a parked-domain page from the registrar. The links were removed in PR #12 | — | **Cannot claim** until it serves a real page |
 | 26 | Hackathon participation or result | Only "Hackathon prep" in PR #7 | — | **Cannot claim** until named with a link |
 | 27 | Chapter participation | Nothing in the repo | — | **Cannot claim** until you supply it |
 | 28 | Rise In Yellow Belt submitted | [YELLOW_BELT.md](https://github.com/barbarosalagoz/barkeep/blob/ef0dc73/docs/YELLOW_BELT.md); the deployment answers HTTP 200 at promptrail-ten.vercel.app | CODE, T-TN | Submitted, yes. A pass or grade is not recorded, so it cannot be claimed |
@@ -339,7 +343,7 @@ The feedback and referral criteria come from the two documents the user shared. 
 | End-to-end mainnet flow with tx hashes | **Partly** | Arc mainnet: yes (T-ARC). Stellar mainnet: no | Either argue that Testnet is enough for an Instaward (the rules do not require mainnet), or run a tiny Stellar mainnet flow (GAPS #5) |
 | One-sentence "why not the existing path" | **Partly** | Drafted in §6. It is not in your voice yet | Rewrite it |
 | Explicit composition with x402 and Stellar agent-payment standards | **Partly** | x402 `exact` and OZ `stellar-accounts`: yes. It works only with Barkeep's facilitator fork. MPP: not integrated. OZ Relayer facilitator: not measured | Measure the OZ Relayer facilitator with a smart-account payer. Say plainly why MPP is deferred |
-| A single narrow product | **Partly** | The README still carries PromptRail, the SEP ramp, the v0.9 twin and an Arc sibling | The application names one deliverable (§4). Trim the README so a reviewer lands on the tab |
+| A single narrow product | **Met** after PR #12 | The README opens on the tab; the rest has moved to History | — |
 | Line-by-line budget, reference ceiling ~$30k | **Met in the draft** (the rate is open) | §11, 92 h. The Instaward cap is $5k, not $30k | Set a rate. Check the arithmetic |
 | Per-person hours | **Met in the draft** | §11 | — |
 | AI-assisted development disclosed | **Partly** | Upstream posts disclose it; commit trailers; §13 drafted | Add a repo-level statement. Describe your own review practice |
@@ -347,7 +351,7 @@ The feedback and referral criteria come from the two documents the user shared. 
 | Competitive analysis beyond Stellar | **Met in the draft** | Appendix E, with sources | Check the rows marked unverified before quoting them |
 | Revenue milestones beyond the grant window | **Not met** | None exist | Your decision. Nothing supports one today |
 | Documented single points of failure (keys, custody) | **Partly** | DEPLOYMENTS.md; Arc MAINNET.md and TESTNET.md; §12 | Record the disposition of the Arc mainnet owner and seller keys. Add a Stellar key-lifecycle section (generate, store, rotate, destroy) |
-| Verifiable evidence for every claim | **Mostly met** for technical claims | Appendix B | Remove barkeep.dev or make it live. Name the hackathon |
+| Verifiable evidence for every claim | **Mostly met** for technical claims | Appendix B | Name the hackathon. The barkeep.dev links were removed in PR #12 |
 | *Referral:* fresh hackathon teams → Instawards | **Partly** | The handbook route is Ambassador Chapter participation, not hackathons. The hackathon is not named | Chapter engagement and a Chapter Lead (GAPS #1) |
 | *Referral:* Open Track needs a novel angle and a verifiable team | **Partly / not yet** | The angle overlaps SDF's x402-MCP roadmap and Crossmint's claims. The team is one person, verifiable through GitHub history and upstream issues only | Not the target now. Revisit after S5 |
 | *Referral:* x402 Facilitator/Bazaar RFP | **Not a fit** | Barkeep's facilitator is a test fork. Several SCF #45 facilitator candidates already exist | Do not apply |
