@@ -84,12 +84,19 @@ These are the checks that exist in the repository today.
 - the build;
 - the offline unit tests: 143 passing, in 18 files.
 
-The counts are from the `docs/instaward-application` branch on 2026-09-25.
+The counts are from 2026-09-25, as merged to `main` in `985746f`.
 
-**Branch protection: none.** Checked through the GitHub API on 2026-09-25:
-`main` is not protected and has no rulesets, so a green CI run is not
-required before a merge. Changes do land through PRs, but that is practice,
-not something the repository enforces.
+**Branch protection on `main`**, enabled on 2026-09-25 and read back through
+the GitHub API:
+- **A pull request is required before merging.** It needs 0 approvals,
+  because the project has one maintainer.
+- **Both CI jobs must pass:** "Contract tests (cargo)" and "Frontend lint +
+  build".
+- **The rules apply to admins too.**
+- **Force pushes and branch deletion are blocked.**
+
+barkeep-arc's `main` has the same settings, with its seven CI jobs
+required.
 
 **On-chain done-tests.**
 - Every behaviour claimed about the contracts was run on Testnet.
@@ -127,7 +134,6 @@ uses a licence outside the allow-list (`packages/web/build/`).
 - fuzzing or property-based tests;
 - static analysis beyond ESLint and `cargo`'s own checks;
 - a secret scanner in CI;
-- branch protection;
 - external review of any kind.
 
 The Arc rebuild does add a mutation check, Slither and a secret scan to its
