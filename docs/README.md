@@ -41,8 +41,10 @@ Each has the same shape: what I expected, what I observed, how I measured it, wh
 
 ## Grant application (drafts)
 
-- [INSTAWARD_APPLICATION.md](INSTAWARD_APPLICATION.md): the SCF Instaward draft, with its working appendices.
-- [INSTAWARD_GAPS.md](INSTAWARD_GAPS.md): what the author must do before sending it.
+- [INSTAWARD_APPLICATION.md](INSTAWARD_APPLICATION.md): the SCF Instaward application (Option B: starter kit and Türkiye chapter workshop).
+- [INSTAWARD_WORKING_NOTES.md](INSTAWARD_WORKING_NOTES.md): internal notes: the official rules with sources, the evidence audit, the checklist, the two scope options.
+- [INSTAWARD_GAPS.md](INSTAWARD_GAPS.md): what is still open before sending.
+- [Barkeep_Instaward_Application.pdf](Barkeep_Instaward_Application.pdf): the clean copy for the Chapter Lead.
 
 ## Earlier work, preserved
 

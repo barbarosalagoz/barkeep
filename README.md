@@ -232,7 +232,8 @@ barkeep/
 │   ├── KEY_MANAGEMENT.md            # key lifecycle, Testnet and the Arc mainnet run
 │   ├── AI_ASSISTED_DEVELOPMENT.md   # what was written with Claude Code, and how it is checked
 │   ├── EXTERNAL_USAGE.md            # third-party usage, kept apart from the author's runs
-│   ├── INSTAWARD_*.md               # SCF Instaward draft and pre-send gaps
+│   ├── INSTAWARD_*.md               # SCF Instaward application, working notes, open items
+│   ├── Barkeep_Instaward_Application.pdf  # clean copy of the application
 │   └── YELLOW_BELT.md, SUBMISSION_PACK.md, SEP_RAMP.md, screenshots/   # history
 │
 ├── scripts/                         # verifier checks, passkey registration and signing pages
