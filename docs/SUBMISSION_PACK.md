@@ -10,7 +10,7 @@ challenge submissions (Rise In). One section per belt.
 > describe the app as it was verified on 2026-09-01.
 >
 > **Update 2026-09-12 (rename):** the project is now **Barkeep**
-> (barkeep.dev). Everything below is left exactly as written and records what
+> (github.com/barbarosalagoz/barkeep). Everything below is left exactly as written and records what
 > Rise In received under the old **PromptRail** name, including the deployment
 > URL, which is unchanged and still live.
 

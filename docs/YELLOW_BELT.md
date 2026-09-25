@@ -1,6 +1,6 @@
 # Yellow Belt submission — PromptRail
 
-> **Note (2026-09-12):** The project is now **Barkeep** ([barkeep.dev](https://barkeep.dev)).
+> **Note (2026-09-12):** The project is now **Barkeep** ([github.com/barbarosalagoz/barkeep](https://github.com/barbarosalagoz/barkeep)).
 > This document is the Stellar **Journey to Mastery — Yellow Belt** submission
 > record and deliberately keeps the original **PromptRail** name throughout,
 > because that is the name the work was submitted, deployed and verified under.

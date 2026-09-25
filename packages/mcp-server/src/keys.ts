@@ -1,14 +1,14 @@
 /*
  * Key handling.
  *
- * Secrets reach this process through the environment and are never written to
- * the state directory, the repository, or a log. The state directory holds
- * public values only -- see state.ts.
+ * The admin and submitter keys reach this process through the environment and
+ * are never written anywhere by it. Agent session keys are made per tab and
+ * kept in their own directory (agentKeys.ts), never in the state directory,
+ * which holds public values only -- see state.ts.
  *
- * This is a deliberate departure from docs/ARCHITECTURE-v2.md §5, which puts
- * "the session key" in the plugin data directory. Storing a spending key next
- * to the metadata that describes what it can spend is worth avoiding while the
- * alternative costs one environment variable.
+ * Storing a spending key next to the metadata that describes what it can spend
+ * is worth avoiding, which is why the agent-key directory is separate from the
+ * state directory rather than inside it as docs/ARCHITECTURE-v2.md §5 sketched.
  */
 
 import { Keypair, StrKey } from "@stellar/stellar-sdk";

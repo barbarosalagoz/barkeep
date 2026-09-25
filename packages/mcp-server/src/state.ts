@@ -19,8 +19,9 @@
  * ids, ledger numbers, amounts, transaction hashes, the agent's PUBLIC key, and
  * the (truncated) bodies of resources already paid for.
  *
- * WHAT IT NEVER HOLDS: key material of any kind. Signing keys come from the
- * environment (see keys.ts). Nothing in this module writes a secret, and
+ * WHAT IT NEVER HOLDS: key material of any kind. The admin and submitter keys
+ * come from the environment (keys.ts); per-tab agent keys live in their own
+ * directory, next to this one and not inside it (agentKeys.ts). Nothing in this module writes a secret, and
  * `assertNoSecrets` is the test that keeps it that way.
  */
 

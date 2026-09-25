@@ -24,8 +24,15 @@ command -v stellar >/dev/null 2>&1 || { echo "barkeep-mcp: the stellar CLI is no
 [ -x "$tsx" ] || { echo "barkeep-mcp: $tsx not found; run npm ci at the repo root" >&2; exit 1; }
 
 BARKEEP_ADMIN_SECRET=$(secret "${BARKEEP_ADMIN_IDENTITY:-barkeep-testnet-admin}")
-BARKEEP_AGENT_SECRET=$(secret "${BARKEEP_AGENT_IDENTITY:-barkeep-testnet-agent}")
 BARKEEP_SUBMITTER_SECRET=$(secret "${BARKEEP_SUBMITTER_IDENTITY:-barkeep-testnet-deployer}")
-export BARKEEP_ADMIN_SECRET BARKEEP_AGENT_SECRET BARKEEP_SUBMITTER_SECRET
+export BARKEEP_ADMIN_SECRET BARKEEP_SUBMITTER_SECRET
+
+# Each new tab gets its own agent key (src/agentKeys.ts). The shared agent key
+# is only needed to pay from tabs opened before that, so it is optional here.
+agent_identity="${BARKEEP_AGENT_IDENTITY:-barkeep-testnet-agent}"
+if agent=$(stellar keys secret "$agent_identity" 2>/dev/null); then
+  BARKEEP_AGENT_SECRET=$agent
+  export BARKEEP_AGENT_SECRET
+fi
 
 exec "$tsx" "$here/src/index.ts"

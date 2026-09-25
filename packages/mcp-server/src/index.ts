@@ -21,6 +21,7 @@ import { x402Client } from "@x402/core/client";
 import { z } from "zod";
 
 import { Chain, explorerTx } from "./chain.ts";
+import { AgentKeys } from "./agentKeys.ts";
 import { keypairFromEnv } from "./keys.ts";
 import { createPayer, type PayResult } from "./pay.ts";
 import { Store } from "./state.ts";
@@ -135,6 +136,10 @@ export function createServer(): McpServer {
       keypairFromEnv("BARKEEP_SUBMITTER_SECRET")
     );
 
+  /* One fresh agent key per tab, destroyed on close (agentKeys.ts). */
+  const agentKeys = new AgentKeys();
+  const sharedAgent = () => keypairFromEnv("BARKEEP_AGENT_SECRET");
+
   const payer = createPayer({
     store,
     fetch: globalThis.fetch,
@@ -142,10 +147,7 @@ export function createServer(): McpServer {
     tokenSymbol: cfg.tokenSymbol,
     tokenDescription: cfg.tokenDescription,
     createPayload: async (tab, maxAmount, paymentRequired) => {
-      const agent = keypairFromEnv("BARKEEP_AGENT_SECRET");
-      if (agent.publicKey() !== tab.agentPublicKey) {
-        throw new Error(`${tab.tabId} was opened for agent ${tab.agentPublicKey}, not ${agent.publicKey()}`);
-      }
+      const agent = agentKeys.keyFor(tab, sharedAgent);
 
       const scheme = smartAccountExactScheme(chain(), {
         agent,
@@ -179,8 +181,8 @@ export function createServer(): McpServer {
     {
       title: "Open a tab",
       description:
-        "Open a spending tab: creates an on-chain context rule holding the agent's " +
-        "session key, a spending-limit policy, a payee-allowlist policy and an expiry. " +
+        "Open a spending tab: creates an on-chain context rule holding a session key made " +
+        "for this tab only, a spending-limit policy, a payee-allowlist policy and an expiry. " +
         "Returns a tab id and the transaction hash. Say who the tab may pay: pass payees, " +
         "which the chain enforces, or allow_any_payee: true for a tab that can pay anyone " +
         "up to its cap. With neither, the tab is refused: no list does not mean anyone. " +
@@ -211,14 +213,18 @@ export function createServer(): McpServer {
         // Refuse a bad payee selection before any key is read or anything is signed.
         payeeSelection(args);
 
-        const result = await openTab(
-          chain(),
-          store,
-          cfg,
-          keypairFromEnv("BARKEEP_ADMIN_SECRET"),
-          keypairFromEnv("BARKEEP_AGENT_SECRET"),
-          args
-        );
+        const admin = keypairFromEnv("BARKEEP_ADMIN_SECRET");
+        const submit = chain();
+
+        // A fresh key for this tab only. If the tab is not opened, the key goes too.
+        const agent = agentKeys.create();
+        let result;
+        try {
+          result = await openTab(submit, store, cfg, admin, agent, args);
+        } catch (error) {
+          agentKeys.destroy(agent.publicKey());
+          throw error;
+        }
 
         return text({
           tab_id: result.tabId,
@@ -229,6 +235,7 @@ export function createServer(): McpServer {
           context_rule_id: result.contextRuleId,
           tx: result.tx,
           explorer: explorerTx(result.tx),
+          agent_key: `${agent.publicKey()}, made for this tab only; close_tab destroys it`,
           // Who it can pay goes last: plain, present, not the headline.
           allow_any_payee: allowsAnyPayee(result.tab),
           payees: describePayees(result.tab),
@@ -315,9 +322,10 @@ export function createServer(): McpServer {
     {
       title: "Close a tab",
       description:
-        "Remove the tab's context rule, revoking the agent session key. After this the " +
-        "key can no longer transfer: the chain refuses it with Error(Contract, #3000), " +
-        "ContextRuleNotFound. An expired tab is a different refusal, #3002.",
+        "Remove the tab's context rule, revoking the agent session key, then destroy the " +
+        "tab's own key on this machine. After this the key can no longer transfer: the chain " +
+        "refuses it with Error(Contract, #3000), ContextRuleNotFound. An expired tab is a " +
+        "different refusal, #3002.",
       inputSchema: {
         tab_id: z.string().optional().describe("Defaults to the current tab"),
       },
@@ -340,6 +348,9 @@ export function createServer(): McpServer {
           tx: result.tx,
           explorer: explorerTx(result.tx),
           revoked: `Rule ${result.tab.contextRuleId}, this tab's rule, is removed: the agent key can no longer spend through this tab.`,
+          agent_key: agentKeys.destroy(result.tab.agentPublicKey)
+            ? "This tab's own key is destroyed: overwritten, then removed from this machine."
+            : "No per-tab key file: this tab was opened with the shared key, which is kept.",
           agent_key_on_other_rules: describeOtherRules(result.otherRules),
         });
       } catch (error) {
