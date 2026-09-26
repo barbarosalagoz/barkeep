@@ -41,3 +41,6 @@ contracts/*/test_snapshots/
 secrets/
 *.pem
 *.key
+
+# graphify: regenerated knowledge graph and its cache (run /graphify . to rebuild)
+graphify-out/
